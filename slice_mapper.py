@@ -2,10 +2,10 @@ import numpy as np
 from matplotlib.patches import Arrow, FancyArrowPatch, FancyArrowPatch, ArrowStyle, FancyArrow
 from matplotlib.collections import PatchCollection, PathCollection
 from scipy.ndimage import map_coordinates
-import slice_mapper_util as smutil
+import dash_components.slice_mapper_util as smutil
 from shapely import geometry, ops as shops, affinity
 from IPython.display import display
-import slice_mapper_util as sm_util
+import dash_components.slice_mapper_util as sm_util
 from skimage import draw
 
 class SliceMapper:
