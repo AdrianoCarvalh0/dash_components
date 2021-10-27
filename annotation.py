@@ -155,7 +155,8 @@ annotation_style = {
 }
 
 # Image that will be shown
-img = np.array(Image.open('3D P0@CTL-3-FC-A_new.tiff'))[300:600, 300:600]
+#img = np.array(Image.open('image1.tiff'))[300:600, 300:600]
+img = np.array(Image.open('image1.tiff'))
 
 fig = px.imshow(img, color_continuous_scale='gray', zmin=0, zmax=100,
         binary_string=True, binary_compression_level=0)
@@ -233,3 +234,5 @@ def on_new_annotation(relayout_data):
 
 if __name__ == "__main__":
     app.run_server(debug=True)
+
+
