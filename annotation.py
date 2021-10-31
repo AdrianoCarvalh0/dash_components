@@ -9,6 +9,7 @@ import json
 from skimage import draw
 from scipy import ndimage
 import re
+import datetime
 from scipy.interpolate import splprep, splev
 
 def path_to_floats(path):
@@ -219,7 +220,10 @@ def on_new_annotation(relayout_data):
         shape_type, coords = process_shape(last_shape)
         shapes.append({'type':shape_type, 'coords':coords})
         lista.append(coords)
-        print(coords)
+        lista_coordenadas = open('lista_coordenadas.txt','w')
+        lista_coordenadas.writelines(f'{datetime.datetime.now()}\n')
+        lista_coordenadas.writelines(str(lista))
+        #print(coords)
 
         img_roi = extract_intensities(img, shape_type, coords)
 
@@ -237,7 +241,7 @@ def on_new_annotation(relayout_data):
 
 if __name__ == "__main__":
     lista = []
-    print(lista)
     app.run_server(debug=True)
+
 
 
