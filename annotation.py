@@ -115,7 +115,9 @@ def process_shape_update(relayout_data):
 def extract_intensities(img, shape_type, coords, flat=True):
     """Extract image intensities inside the selected shape."""
 
-    coords = np.rint(coords).astype(np.int)
+    #coords = np.rint(coords).astype(np.int)
+    #Alterei esta parte para int
+    coords = np.rint(coords).astype(int)
     img_shape = img.shape
 
     if shape_type=='rect':
@@ -216,6 +218,7 @@ def on_new_annotation(relayout_data):
         last_shape = relayout_data["shapes"][-1]
         shape_type, coords = process_shape(last_shape)
         shapes.append({'type':shape_type, 'coords':coords})
+        lista.append(coords)
         print(coords)
 
         img_roi = extract_intensities(img, shape_type, coords)
@@ -233,6 +236,8 @@ def on_new_annotation(relayout_data):
         return (dash.no_update,)*2
 
 if __name__ == "__main__":
+    lista = []
+    print(lista)
     app.run_server(debug=True)
 
 
