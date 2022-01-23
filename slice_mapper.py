@@ -281,14 +281,15 @@ def find_envelop_cross_path_intersection(sh_cross_path, sh_path_interp, max_dist
 
 
 def map_slices(img, path1, path2, delta_eval, smoothing, reach):
-    vessel_model = create_vessel_model(img, path1, path2, delta_eval, smoothing)
-    vessel_map, cross_paths = create_map(img, vessel_model, reach, delta_eval, smoothing, return_cross_paths=True)
-    vessel_model.set_map(vessel_map)
 
-    # if make_plot:
-    # plot_model(img, vessel_model, cross_paths, ax)
+  vessel_model = create_vessel_model(img, path1, path2, delta_eval, smoothing)
+  vessel_map, cross_paths = create_map(img, vessel_model, reach, delta_eval, smoothing, return_cross_paths=True)
+  vessel_model.set_map(vessel_map)
 
-    return vessel_model, cross_paths
+  #if make_plot:
+      #plot_model(img, vessel_model, cross_paths, ax)
+
+  return vessel_model, cross_paths
 
 
 def interpolate_medial_path(path, delta_eval=2., smoothing=0.01):
