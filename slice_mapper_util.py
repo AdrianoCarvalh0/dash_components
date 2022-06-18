@@ -4,8 +4,8 @@ from scipy.interpolate import splprep, splev
 from scipy.spatial import Voronoi
 from shapely import geometry, ops as shops
 
-def arc_length(path):
-    """Calculate the cumulative arc-length between points in path"""
+def arc_length(path):   
+    '''Calcula o comprimento de arco acumulado, entre dois pontos'''
     
     dl = np.sqrt(np.sum(np.diff(path, axis=0)**2, axis=1))
     l = np.cumsum(dl).tolist()
@@ -13,13 +13,18 @@ def arc_length(path):
     
     return l
 
-def interpolate(path, delta_eval=2., smoothing=0.1, k=3, return_params=False):
-    """Interpolate a list of points"""
+def interpolate(path, delta_eval=2., smoothing=0.1, k=3, return_params=False):    
+    '''Interpola uma lista de pontos'''
 
+    #transforma o path em np.array
     path = np.array(path)
+
+    #absorve o comprimento do arco acumulado
     l = arc_length(path)
 
+    #numero de pontos absorve o tamanho do path
     num_points = len(path)
+    
     (tck, u), fp, ier, msg = splprep(path.T, s=smoothing*num_points, k=k, full_output=True)
     
     delta_eval_norm = delta_eval/l[-1]
@@ -38,32 +43,32 @@ def interpolate(path, delta_eval=2., smoothing=0.1, k=3, return_params=False):
         return path_interp, tangent
 
 def two_stage_interpolate(path, delta_eval=2., smoothing=0.1, k=3):
-    """Interpolate path in two stages. First, a linear interpolation is applied so that
-    intermediate points are generated. Then, a cubic interpolation is applied. This is useful
-    because the cubic interpolation guarantees that the spline passes near the original points
-    in the path, but it can be far away from the original curve between two original points. By 
-    first doing a linear interpolation followed by a cubic one, the resulting spline cannot be
-    too far away from the original path.
+    '''Interpolar o caminho em dois estágios. Primeiro, uma interpolação linear é aplicada para que
+    pontos intermediários sejam gerados. Então, uma interpolação cúbica é aplicada. Isso é útil
+    porque a interpolação cúbica garante que o spline passe próximo aos pontos originais
+    no caminho, mas pode estar longe da curva original entre dois pontos originais. Fazendo
+    primeiro uma interpolação linear seguida por uma cúbica, o spline resultante não pode ser
+    muito longe do caminho original.
     
-    Parameters:
+    Parâmetros:
     -----------
-    path : ndarray
-        List of points containing the path to be inteprolated.
+    caminho: ndarray
+        Lista de pontos contendo o caminho a ser integrado.
     delta_eval : float
-        The interval to evaluate the interpolation.
-    smoothing : float
-        Smoothing factor. 0 means the the spline will pass through all linearly-interpolated points.
+        O intervalo para avaliar a interpolação.
+    suavização: float
+        Fator de suavização. 0 significa que o spline passará por todos os pontos interpolados linearmente.
     k : int
-        The degree of the second interpolation.
-    """
+        O grau da segunda interpolação.
+    '''
     
     path_interp_linear, _ = interpolate(path, delta_eval=delta_eval, smoothing=0, k=1)
     path_interp, tangent = interpolate(path_interp_linear, delta_eval=delta_eval, smoothing=smoothing, k=k)
  
     return path_interp, tangent
 
-def get_normals(tangents):
-    """Get normal vectors from a list of tangent vectors"""
+def get_normals(tangents):    
+    '''Pega vetores normais mediante uma lista de vetores tangentes'''
     
     normals = np.zeros((len(tangents), 2))
     for idx, t in enumerate(tangents):
@@ -80,8 +85,8 @@ def get_normals(tangents):
         
         orient = np.sign(np.cross(t, n))
         if idx>0:
-            if orient!=prev_orient:
-                # Orientation of vector is different from previous vector, flip it
+            if orient!=prev_orient:               
+                # Se a orientação do vetor for diferente do vetor anterior, existe a inverção da orientação
                 n *= -1
                 orient *= -1
         prev_orient = orient
@@ -90,21 +95,21 @@ def get_normals(tangents):
     return normals
 
 def dist(p1, p2):
-    """Distance between two points"""
+    '''Calcula a distância Euclidiana entre dois pontos'''
     
     return math.sqrt((p1[0]-p2[0])**2+(p1[1]-p2[1])**2)
 
 def medial_voronoi_ridges(path1, path2):
-    """Extract medial Voronoi ridges between path1 and path2. Those can be used
-    for representing the medial path of a tubular structure."""
+    '''Extração dos cumes de Voronoi entre o caminho1 e caminho2. Diagramas de Voronoi podem ser
+    usados para representar o caminho medial de uma estrutura tubular'''
     
     all_points = np.concatenate((path1, path2), axis=0)
     all_points_ordered = np.concatenate((path1, path2[::-1]), axis=0)
     vor = Voronoi(all_points)
     num_points_path1 = len(path1)
     tube_region = geometry.Polygon(all_points_ordered)
-    idx_internal_vertices = set()
-    # Get Voronoi vertices inside the tube
+    idx_internal_vertices = set()    
+    # Pega os vértices de Vornoi dentro do tubo
     for idx_vertex, vertex in enumerate(vor.vertices):
         if tube_region.contains(geometry.Point(vertex)):
             idx_internal_vertices.add(idx_vertex)
@@ -115,11 +120,11 @@ def medial_voronoi_ridges(path1, path2):
 
         first_is_path1 = True if ridge[0] < num_points_path1 else False
         second_is_path1 = True if ridge[1] < num_points_path1 else False
-        if (first_is_path1+second_is_path1)==1:
-            # If ridge is between a point in path1 and another in path2
+        if (first_is_path1+second_is_path1)==1:            
+            # Verificação se um cume está entre um ponto no caminho1 e outro no caminho2
             idx_ridge_vertices = vor.ridge_vertices[idx]
-            if idx_ridge_vertices[0] in idx_internal_vertices and idx_ridge_vertices[1] in idx_internal_vertices:
-                # Be careful with -1 index in idx_ridge_vertices for terminal points
+            if idx_ridge_vertices[0] in idx_internal_vertices and idx_ridge_vertices[1] in idx_internal_vertices:                
+                # Tenha cuidado com o índice -1 em idx_ridge_vertices para pontos terminais
                 idx_medial_vertices.append(idx_ridge_vertices)
                 if ridge[0] < num_points_path1:
                     point_relation.append((ridge[0], ridge[1]))
@@ -132,8 +137,8 @@ def medial_voronoi_ridges(path1, path2):
     return vor, idx_medial_vertices, point_relation
 
 def order_ridge_vertices(idx_vertices):
-    """Given a list of Voronoi ridge vertices that define a piecewise path but are unordered,
-    order the ridges."""
+    '''Ordena os vértices dos cumes de Voroni. Uma lista de cumes de Voronoi, que não estão ordenados, são passados
+    como parâmetro e na execução da função temos a ordenação destes vértices que definem um caminho por partes.'''
     
     idx_vertices = list(map(tuple, idx_vertices))
     vertice_ridge_map = {}
@@ -185,23 +190,26 @@ def order_ridge_vertices(idx_vertices):
     return ordered_vertices
         
 def invert_if_oposite(path1, path2):
-    """Invert path2 if path1 and path2 run on opposite directions"""
+    '''Inverte o caminho2, se o caminho1 e o caminho2 forem demarcados em direções opostas. 
+    Isto acontece quando demarcamos os vasos um da direita para a esquerda e outro da esquerda para a direita, ou vice-versa.'''
     
     min_size = min([len(path1), len(path2)])
     avg_dist = np.sum(np.sqrt(np.sum((path1[:min_size]-path2[:min_size])**2, axis=1)))
     avg_dist_inv = np.sum(np.sqrt(np.sum((path1[:min_size]-path2[::-1][:min_size])**2, axis=1)))
     if avg_dist_inv<avg_dist:
-        # Paths go on opposite directions
+        # Inverção do vetor de caminhos2
         path2 = path2[::-1]
     
     return path2
 
 def increase_path_resolution(path, res_factor):
+
+    '''Incrementa a resolução de um dado caminho, através da aplicação de um fator'''
     
     x, y = path.T
     num_points = len(path)
     indices = list(range(num_points))
-    # Define parametric variable making sure that it passes through all the original points
+    # Define a variável paramétrica certificando-se de que ela passe por todo o ponto original
     tck, _ = splprep(path.T, u=indices, s=0, k=3)
     eval_points = np.linspace(0, num_points-1, num_points*res_factor - (res_factor-1))
     x_interp, y_interp = splev(eval_points, tck, der=0)
@@ -213,7 +221,11 @@ def increase_path_resolution(path, res_factor):
     return path_interp, tangents
 
 def find_point_idx(sh_path, point):
-    
+    '''Encontra pontos nos índices'''
+
+    #aplicação da distância Euclidiana para encontrar as menores distâncias entre dois pontos
     dists = np.sqrt((sh_path.xy[0]-point[0])**2+(sh_path.xy[1]-point[1])**2)
+
+    #retorna as distâncias mínimas
     return np.argmin(dists)
     

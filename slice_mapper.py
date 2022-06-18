@@ -75,22 +75,26 @@ class VesselMap:
         self.path2_mapped = path2_mapped
 
 
-def interpolate_envelop(path1, path2, delta_eval=2., smoothing=0.01):
-    """Generate smooth envelop along path1 and path2"""
-
+def interpolate_envelop(path1, path2, delta_eval=2., smoothing=0.01):    
+    '''Gera um envelope suave ao longo do caminho1 e caminho2
+    o smutil é dash_components.slice_mapper_util
+    '''
+    # os caminhos são interpolados e novas tangentes são criadas a partir da interpolação dos caminhos
     path1_interp, tangents1 = smutil.two_stage_interpolate(path1, delta_eval=delta_eval, smoothing=smoothing)
     path2_interp, tangents2 = smutil.two_stage_interpolate(path2, delta_eval=delta_eval, smoothing=smoothing)
 
+    # vetores normais são criados a partir das novas tangentes
     normals1 = smutil.get_normals(tangents1)
     normals2 = smutil.get_normals(tangents2)
 
     min_size = min([len(path1_interp), len(path2_interp)])
-    # Make normals point to opposite directions
+
+    # Faz as normais apontarem para direções opostas.
     congruence = np.sum(np.sum(normals1[:min_size] * normals2[:min_size], axis=1))
     if congruence > 0:
         normals2 *= -1
 
-    # Make normals point to the inside
+    # Faz as normais apontarem para o interior
     vsl1l2 = path2_interp[:min_size] - path1_interp[:min_size]
     congruence = np.sum(np.sum(vsl1l2 * normals1[:min_size], axis=1))
     if congruence < 0:
@@ -98,7 +102,8 @@ def interpolate_envelop(path1, path2, delta_eval=2., smoothing=0.01):
         normals2 *= -1
 
     if np.cross(tangents1[1], normals1[1]) < 0:
-        # Make path1 run on the left of path2
+     
+        # Faz o caminho1 ser executado à esquerda do caminho2
         path1, path2 = path2, path1
         path1_interp, path2_interp = path2_interp, path1_interp
         tangents1, tangents2 = tangents2, tangents1
@@ -108,7 +113,8 @@ def interpolate_envelop(path1, path2, delta_eval=2., smoothing=0.01):
 
 
 def extract_medial_path(path1_interp, path2_interp, delta_eval=2., smoothing=0.01, return_voronoi=False):
-    """Extract medial path from a tubular structure"""
+   
+    ''' Extrai o caminho medial a partir de uma estrutura tubular'''
 
     vor, idx_medial_vertices, point_relation = smutil.medial_voronoi_ridges(path1_interp, path2_interp)
     idx_medial_vertices_ordered = smutil.order_ridge_vertices(idx_medial_vertices)
@@ -118,7 +124,7 @@ def extract_medial_path(path1_interp, path2_interp, delta_eval=2., smoothing=0.0
     medial_path = np.array(medial_path)
     medial_path = smutil.invert_if_oposite(path1_interp, medial_path)
 
-    # Guarantee that medial path goes to the very end of the tube
+    # Garante que o caminho medial vai até o final do tubo
     first_point = (path1_interp[0] + path2_interp[0]) / 2
     last_point = (path1_interp[-1] + path2_interp[-1]) / 2
     medial_path = np.array([first_point.tolist()] + medial_path.tolist() + [last_point.tolist()])
@@ -132,7 +138,7 @@ def extract_medial_path(path1_interp, path2_interp, delta_eval=2., smoothing=0.0
 
 def create_cross_paths_old(path, normals, cross_coord, remove_endpoints=True, return_flat=True):
     if remove_endpoints:
-        # It is useful to remove endpoints if the path was interpolated
+        # É útil remover endpoints se o caminho foi interpolado
         path = path[1:-1]
         normals = normals[1:-1]
 
@@ -149,8 +155,10 @@ def create_cross_paths_old(path, normals, cross_coord, remove_endpoints=True, re
 
 
 def create_cross_paths_limit(path, normals, cross_coord, remove_endpoints=True):
+    ''' Esta função cria os limites das trajetórias transversais'''
+
     if remove_endpoints:
-        # It is useful to remove endpoints if the path was interpolated
+        # É útil remover endpoints (pontos de parada - É ISSO MESMO?) se o caminho foi interpolado
         path = path[1:-1]
         normals = normals[1:-1]
 
@@ -176,49 +184,78 @@ def create_cross_paths_limit(path, normals, cross_coord, remove_endpoints=True):
 
 
 def create_vessel_model(img, path1, path2, delta_eval, smoothing):
+
+    ''' Criação do modelo do vaso'''
+
+    #chama a função de inversão. Se o caminho estiver invertido o caminho2 é invertido
     path2 = smutil.invert_if_oposite(path1, path2)
+
+    # variáveis absorvem o resultado do envelopamento de caminho1, caminho2, passamos um delta_eval 
+    # que aumenta a resolução e um grau de suavização é aplicado
     path1, path1_info, path2, path2_info = interpolate_envelop(path1, path2, delta_eval, smoothing)
+
+    # As informação contidas nos caminhos 1 e 2 são inseridas nas variáveis
     path1_interp, tangents1, normals1 = path1_info
     path2_interp, tangents2, normals2 = path2_info
 
+    # A linha medial, juntamente com suas informações são criadas
     medial_path, medial_path_info = extract_medial_path(path1_interp, path2_interp, delta_eval=delta_eval,
                                                         smoothing=smoothing)
 
+    # o modelo vaso é criado e passado como retorno da função
     vm = VesselModel(path1, path1_info, path2, path2_info, medial_path, medial_path_info, delta_eval)
 
     return vm
 
 
 def create_map(img, vessel_model, reach, delta_eval, smoothing, return_cross_paths=False):
-    """Create image containing cross-section intensities along the provided medial path."""
+    
+    '''Cria uma imagem contendo intensidades de seção transversal ao longo do caminho medial fornecido'''
 
+    # os caminhos absorvem os valores do modelo do vaso no índice 'interpolated'
     path1_interp = vessel_model.path1['interpolated']
     path2_interp = vessel_model.path2['interpolated']
+
+    # o caminho medial interpolado e as mediais normais são criados a partir do modelo do vaso
     medial_path_interp, medial_normals = vessel_model.medial_path['interpolated'], vessel_model.medial_path['normals']
 
+    # as coordenadas tranversais são criadas a partir do reach (altura) e do delta_eval, concatenando os valores em um arranjo 
     cross_coord = np.concatenate((np.arange(-reach, 0 + 0.5 * delta_eval, delta_eval),
-                                  np.arange(delta_eval, reach + 0.5 * delta_eval, delta_eval)))
-    # cross_paths = create_cross_paths_old(medial_path_interp, medial_normals, cross_coord, return_flat=False)
+                                  np.arange(delta_eval, reach + 0.5 * delta_eval, delta_eval)))   
 
+    # os caminhos transversais e os versores tranversais são criados a partir da função de criação de caminhos transversais
     cross_paths, cross_versors = create_cross_paths(cross_coord, medial_path_interp, medial_normals, path1_interp,
                                                     path2_interp, reach)
+
+    # a coordenada medial é criada através da suavização do comprimento do arco do caminho medial interpolado                                                    
     medial_coord = smutil.arc_length(medial_path_interp)
+
     cross_paths_valid = []
+
+    # função que pega todo o caminho cruzado, verifica se está vazio e adiciona os valores válidos em um vetor
+    # de caminhos cruzados válidos
     for idx, cross_path in enumerate(cross_paths[1:-1], start=1):
         if cross_path is not None:
             cross_paths_valid.append(cross_path)
     cross_paths_valid = np.array(cross_paths_valid)
 
+    # variável que absorve os caminhos cruzados planos a partir dos pontos no caminho transversal
     cross_paths_flat = np.array([point for cross_path in cross_paths_valid for point in cross_path])
+
+    # mapeamento dos valores são calculados a partir do método map_coordinates do scipy.ndimage, passando alguns parâmetros
+    # e os caminhos tranversais planos transpostos
     mapped_values = map_coordinates(img.astype(float), cross_paths_flat.T[::-1], output=np.float, mode='mirror')
+
+    # os caminhos mapeados são reformulados e transpostos
     mapped_values = mapped_values.reshape(-1, len(cross_coord)).T
 
+    # geração de uma máscara para a imagem e para os valores mapeados
     mask_img = generate_mask(path1_interp, path2_interp, img.shape)
     mapped_mask_values = map_coordinates(mask_img, cross_paths_flat.T[::-1], output=np.uint8,
                                          order=0, mode='mirror')
     mapped_mask_values = mapped_mask_values.reshape(-1, len(cross_coord)).T
 
-    # Get precise positions for path1_interp and path2_interp in the map
+    # pega as precisas posições para o caminho1 e caminho2 interpolado no mapa 
     path1_mapped, path2_mapped = find_vessel_bounds_in_map(path1_interp,
                                                            path2_interp, cross_paths_valid, delta_eval, smoothing)
 
@@ -232,19 +269,34 @@ def create_map(img, vessel_model, reach, delta_eval, smoothing, return_cross_pat
 
 
 def find_vessel_bounds_in_map(path1_interp, path2_interp, cross_paths, delta_eval, smoothing):
+
+    '''Encontra os limites dos vasos no mapa'''
+
+    # LineString: O objeto LineString construído representa um ou mais splines lineares conectados entre os pontos. 
+    # Pontos repetidos na sequência ordenada são permitidos, mas podem incorrer em penalidades de desempenho e 
+    # devem ser evitados. Uma LineString pode se cruzar ( ou seja , ser complexa e não simples ).
     sh_path1_interp = geometry.LineString(path1_interp)
     sh_path2_interp = geometry.LineString(path2_interp)
     path1_mapped = []
     path2_mapped = []
+
+    # varre os caminhos transversais
     for cross_path in cross_paths:
+
+        # aplica o LineString no caminho transversal
         sh_cross_path = geometry.LineString(cross_path)
+
+        # limite do caminho é obtido através das interseções dos caminhos cruzados
         path_lim = find_envelop_cross_path_intersection(sh_cross_path, sh_path1_interp)
         if path_lim is None:
             path1_mapped.append(np.nan)
         else:
+            # sh_path1_cross_coord recebe o retorno da distância ao longo deste objeto geométrico até um ponto mais próximo do outro objeto.
             sh_path1_cross_coord = sh_cross_path.project(path_lim)
             path1_mapped.append(np.array(sh_path1_cross_coord))
         path_lim = find_envelop_cross_path_intersection(sh_cross_path, sh_path2_interp)
+
+        # o mesmo procedimento é feito para o caminho2
         if path_lim is None:
             path2_mapped.append(np.nan)
         else:
@@ -254,19 +306,27 @@ def find_vessel_bounds_in_map(path1_interp, path2_interp, cross_paths, delta_eva
     path1_mapped = np.array(path1_mapped) / delta_eval
     path2_mapped = np.array(path2_mapped) / delta_eval
 
+    #retorno dos valores do caminho 1 e 2 mapeados
     return path1_mapped, path2_mapped
 
 
 def find_envelop_cross_path_intersection(sh_cross_path, sh_path_interp, max_dist_factor=2.):
+
+    '''Encontra interseções dos caminhos cruzados do envelope'''
+
+    #pega o índice inteiro do meio do tamanho de sh_cross_path.coords
     idx_middle_cross_point = len(sh_cross_path.coords) // 2
+
+    # o limite do caminho é obtido através das interseções do sh_cross_path
     path_lim = sh_path_interp.intersection(sh_cross_path)
     if path_lim.is_empty:
-        # At the endpoints the paths might not cross
+        # Nos pontos finais, os caminhos podem não se cruzar
         path_lim = None
     else:
+
         sh_middle_cross_point = geometry.Point(sh_cross_path.coords[idx_middle_cross_point])
         if path_lim.geom_type == 'MultiPoint':
-            # The paths cross at more than one point. Find the point closest to the middle
+            # Os caminhos se cruzam em mais de um ponto, é necessário encontrar o ponto mais próximo do meio
             distances = []
             for point in path_lim:
                 distances.append(sh_middle_cross_point.distance(point))
@@ -277,36 +337,40 @@ def find_envelop_cross_path_intersection(sh_cross_path, sh_path_interp, max_dist
         if distance_path_lim > max_dist_factor * min_distance:
             path_lim = None
 
+    # retorna o limite do caminho
     return path_lim
 
 
 def map_slices(img, path1, path2, delta_eval, smoothing, reach):
 
-  vessel_model = create_vessel_model(img, path1, path2, delta_eval, smoothing)
-  vessel_map, cross_paths = create_map(img, vessel_model, reach, delta_eval, smoothing, return_cross_paths=True)
-  vessel_model.set_map(vessel_map)
+    ''' Criando as fatias do mapa'''
+    
+    # criação do modelo do vaso
+    vessel_model = create_vessel_model(img, path1, path2, delta_eval, smoothing)
 
-  #if make_plot:
-      #plot_model(img, vessel_model, cross_paths, ax)
+    # criação do mapa do vaso e dos caminhos transversais
+    vessel_map, cross_paths = create_map(img, vessel_model, reach, delta_eval, smoothing, return_cross_paths=True)
+    vessel_model.set_map(vessel_map)
 
-  return vessel_model, cross_paths
+    # retornando o modelo do vaso e os caminhos transversais
+    return vessel_model, cross_paths
 
 
 def interpolate_medial_path(path, delta_eval=2., smoothing=0.01):
-    """Interpolate a path"""
+    
+    '''Interpolando o caminho medial'''
 
+    # o caminho interpolado e as tangentes são calculadas a partir de dois estágios de interpolação
+    # o primeiro estágio é linear e o segundo é cúbico
     path_interp, tangents = smutil.two_stage_interpolate(path, delta_eval=delta_eval, smoothing=smoothing)
+
+    # as normais são obtidas a partir das tangentes
     normals = smutil.get_normals(tangents)
     if np.cross(tangents[0], normals[0]) > 0:
-        # Make normals point to the "left" of the medial_path
+        # Fazendo as normais apontarem para a "esquerda" do medial_path
         normals *= -1
-    # Make the majority of normals point to positive y axis. Useful when interpreting the results
-    # of the mapper
-    # j_versor = np.array([0, 1])
-    # congruence = np.sum(np.sum(normals*j_versor[None], axis=1))
-    # if congruence<0:
-    #     normals *= -1
-
+    
+    # retornando o caminho interpolado, as tangentes e as normais
     return path_interp, tangents, normals
 
 
