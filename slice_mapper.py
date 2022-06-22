@@ -1,11 +1,10 @@
 import numpy as np
-from matplotlib.patches import Arrow, FancyArrowPatch, FancyArrowPatch, ArrowStyle, FancyArrow
-from matplotlib.collections import PatchCollection, PathCollection
+from matplotlib.patches import Arrow, ArrowStyle, FancyArrow
+from matplotlib.collections import PatchCollection
 from scipy.ndimage import map_coordinates
 import dash_components.slice_mapper_util as smutil
 from shapely import geometry, ops as shops, affinity
 from IPython.display import display
-import dash_components.slice_mapper_util as sm_util
 from skimage import draw
 
 
@@ -375,90 +374,120 @@ def interpolate_medial_path(path, delta_eval=2., smoothing=0.01):
 
 
 def show_interpolated(path_interp, tangents, normals, ax, scale=2., color='blue'):
-    """Show interpolated path, together with tangents and normals. scale defines the length
-    of the arrows."""
+    '''Mostra o caminho interpolado, juntamente com tangentes e normais. A escala passada por parâmetro define o comprimento
+    das setas.'''
 
+    # definição do comprimento das cabeças das tangentes e das normais
     tangent_heads = path_interp + scale * tangents
     normals_heads = path_interp + scale * normals
+
+    # estilo da seta
     arrow_style = ArrowStyle("->", head_length=10, head_width=3)
+
+    #vetor de setas tangentes
     tangent_arrows = []
-    for idx in range(len(path_interp)):
-        # fa = FancyArrowPatch(path_interp[idx], tangent_heads[idx], arrowstyle=arrow_style, color='orange')
+    for idx in range(len(path_interp)):     
+
+        # fa recebe o método FancyArrow, que faz parte da biblioteca do matplot.lib, que ao passar um polígono 
+        # como parâmetro cria-se uma flecha (seta)
         fa = FancyArrow(path_interp[idx, 0], path_interp[idx, 1], scale * tangents[idx, 0], scale * tangents[idx, 1],
                         width=0.01, head_width=0.1, head_length=0.2, color='orange')
+        #o vetor de setas tangentes é incrementado 
         tangent_arrows.append(fa)
     tangents_col = PatchCollection(tangent_arrows, match_original=True, label='Tangent')
 
+    #vetor de setas normais
     normal_arrows = []
-    for idx in range(len(path_interp)):
-        # fa = FancyArrowPatch(path_interp[idx], normals_heads[idx], arrowstyle=arrow_style, color='orange')
+    for idx in range(len(path_interp)):     
+        # fa recebe o método FancyArrow, que faz parte da biblioteca do matplot.lib, que ao passar um polígono 
+        # como parâmetro cria-se uma flecha (seta)  
         fa = FancyArrow(path_interp[idx, 0], path_interp[idx, 1], scale * normals[idx, 0], scale * normals[idx, 1],
                         width=0.01, head_width=0.1, head_length=0.2, color='orange')
         normal_arrows.append(fa)
+    #o PatchCollection do matplotlib pega as setas normais e adiciona no normals_col. O PatchCollection armazena um conjunto de patches, que no
+    # caso são o conjunto de setas normais    
     normals_col = PatchCollection(normal_arrows, match_original=True, label='Normal')
 
+    #plot dos caminhos interpolados
+    #path_interp[:, 0] nesta parte roda todas as linhas da coluna 0
+    #path_interp[:, 1] nesta parte roda todas as linhas da coluna 1
     ax.plot(path_interp[:, 0], path_interp[:, 1], '-', c=color, label='Interpolated')
+
+    #adição das colunas tangentes e normais aos eixos
     ax.add_collection(tangents_col)
-    ax.add_collection(normals_col)
-    # for ta, na in zip(tangent_arrows, normal_arrows):
-    #    ax.add_patch(ta)
-    #    ax.add_patch(na)
+    ax.add_collection(normals_col)    
 
 
 def plot_model(img, vessel_model, cross_paths, ax):
+    ''' plotando a imagem, juntamente com o modelo do vaso, com as linhas preenchidas ao longo do vaso, superior
+    e inferior, na cor verde e exibição da linha medial na cor vermelha. Todos estes dados advieram interpolados.'''
+
+    #variáveis que absorve os caminhos1 e 2 do modelo do vaso
     p1_data = vessel_model.path1
     p2_data = vessel_model.path2
-    medial_data = vessel_model.medial_path
 
-    x1, y1 = p1_data['original'].T
-    x2, y2 = p2_data['original'].T
+    #absorvendo o caminho medial do modelo do vaso
+    medial_data = vessel_model.medial_path
+   
+    #set_aspect com o parâmetro equal faz com que os eixos x e y tenham a mesma escala
     ax.set_aspect('equal')
     ax.imshow(img, 'gray')
-    # ax.plot(x1, y1, '-o', c='blue', label='Original1')
-    # ax.plot(x2, y2, '-o', c='blue', label='Original2')
+    
+    #chama a função que mostra os dados interpolados
     show_interpolated(p1_data['interpolated'], p1_data['tangents'], p1_data['normals'], ax,
                       scale=0.6, color='green')
     show_interpolated(p2_data['interpolated'], p2_data['tangents'], p2_data['normals'], ax,
                       scale=0.6, color='green')
     show_interpolated(medial_data['interpolated'], medial_data['tangents'], medial_data['normals'], ax,
-                      scale=0.6, color='red')
-    # for cross_path in cross_paths:
-    ##p1, p2 = cross_paths[idx_path], cross_paths[idx_path+cross_coord.shape[0]-1]
-    ##plt.plot([p1[0], p2[0]], [p1[1], p2[1]], '-o', c='cyan')
-    ##cross_path = cross_paths[idx_path:idx_path+cross_coord.shape[0]]
-    # ax.plot(cross_path[:,0], cross_path[:,1], '-o', c='cyan', ms=3, alpha=0.2)
-
-    # ax.legend(loc=2)
+                      scale=0.6, color='red')    
 
 
 def generate_mask(path1, path2, img_shape):
+    ''' função que gera máscara para a imagem'''
+
+    #NÃO ENTENDI PARA QUE SERVE
+
+    # concatenate ==> junta uma sequência de vetores ao longo do eixo 0
     envelop = np.concatenate((path1, path2[::-1]), axis=0)
+
+    # round ==> arredonda uma matriz, transforma em inteiro
     envelop = np.round(envelop).astype(int)[:, ::-1]
+
+    #cria a máscara da imagem, passando o shape da imagem e o envelop (polígono) criado
     mask_img = draw.polygon2mask(img_shape, envelop)
 
     return mask_img
 
 
-# Functions related to the creation of cross-sectional paths
 def create_cross_paths(cross_coord, medial_path, medial_normals, path1, path2, reach, normal_weight=2,
                        path_res_factor=3, angle_limit=45, angle_res=2):
+
+    '''Funções relacionadas com a criação de caminhos transversais'''
+
+    # criação de versores transversais
     cross_versors = create_cross_versors(medial_path, medial_normals, path1, path2, reach, normal_weight,
                                          path_res_factor, angle_limit, angle_res)
+    
+    # transposição das coordenadas tranversais
     cross_coord = cross_coord[None].T
+
     cross_paths = []
+    # função que pega os índices e pontos do caminho medial para criar dos caminhos tranversais
     for idxm, pointm in enumerate(medial_path):
+
+        # pega o índice nos versores cruzados
         cross_versor = cross_versors[idxm]
+
+        # se o versor transversal estiver vazio os caminhos transversais recebem None
         if cross_versor is None:
             cross_paths.append(None)
         else:
+            # o caminho tranversal recebe o ponto + a coordenada tranversal multiplicada pelo versor transversal
             cross_path = pointm + cross_coord * cross_versor
-            cross_paths.append(cross_path.tolist())
+            #os caminhos cruzados adicionam o caminho cruzado em formato de lista
+            cross_paths.append(cross_path.tolist())            
 
-            # plt.plot([pointm[0]-3*normalm[0], pointm[0], pointm[0]+3*normalm[0]],
-            #         [-pointm[1]+3*normalm[1], -pointm[1], -pointm[1]-3*normalm[1]], c='blue')
-            # plt.plot([pointm[0]-3*normalm_rotated[0], pointm[0], pointm[0]+3*normalm_rotated[0]],
-            #         [-pointm[1]+3*normalm_rotated[1], -pointm[1], -pointm[1]-3*normalm_rotated[1]], c='red')
-
+    # retorno dos caminhos tranversais e dos versores transversais
     return cross_paths, cross_versors
 
 
@@ -513,11 +542,7 @@ def find_best_angles(medial_path, medial_normals, path1, path2, angles, reach, n
         else:
             idx_best_angles.append(idx_max)
             sh_candidate_line_rotated = affinity.rotate(sh_candidate_line, angles[idx_max])
-            candidate_line_rotated = np.array(sh_candidate_line_rotated)
-            # plt.plot([candidate_line_rotated[0][0], candidate_line_rotated[-1][0]], [-candidate_line_rotated[0][1], -candidate_line_rotated[-1][1]])
-            # plt.plot([pointm[0], pointm[0]+normalm[0]], [-pointm[1], -pointm[1]-normalm[1]], c='blue')
-
-    # import pdb; pdb.set_trace()
+            candidate_line_rotated = np.array(sh_candidate_line_rotated)          
 
     return idx_best_angles
 
@@ -544,10 +569,5 @@ def measure_fitness(sh_candidate_line, normalm, sh_path1, normals1, sh_path2, no
         path1_congruence = abs(np.dot(candidate_normal, normal1))
         path2_congruence = abs(np.dot(candidate_normal, normal2))
         fitness = normal_weight * medial_congruence + path1_congruence + path2_congruence
-
-        # plt.plot([candidate_line_rotated[0][0], candidate_line_rotated[-1][0]], [-candidate_line_rotated[0][1], -candidate_line_rotated[-1][1]])
-        # plt.plot([path1_point[0], path2_point[0]], [-path1_point[1], -path2_point[1]], 'o', c='blue')
-        # plt.plot([path1_point[0], path1_point[0]+normal1[0]], [-path1_point[1], -path1_point[1]-normal1[1]], c='orange')
-        # plt.plot([path2_point[0], path2_point[0]+normal2[0]], [-path2_point[1], -path2_point[1]-normal2[1]], c='orange')
-
+        
     return fitness
