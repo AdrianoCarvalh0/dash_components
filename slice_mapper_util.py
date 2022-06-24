@@ -25,15 +25,25 @@ def interpolate(path, delta_eval=2., smoothing=0.1, k=3, return_params=False):
     #numero de pontos absorve o tamanho do path
     num_points = len(path)
     
+    # tck características da curva
+    # utilização do splprep do scipy para fazer a interpolação
     (tck, u), fp, ier, msg = splprep(path.T, s=smoothing*num_points, k=k, full_output=True)
     
+    # o l na última posição é o valor acumulado de todas as somas do comprimento do arco
     delta_eval_norm = delta_eval/l[-1]
     eval_points = np.arange(0, 1+0.75*delta_eval_norm, delta_eval_norm)
+    
+    # pontos interpolados
     x_interp, y_interp = splev(eval_points, tck, ext=3)
+
+    #derivadas dos pontos interpolados, der=1, tem-se a derivada e não o ponto
     dx_interp, dy_interp = splev(eval_points, tck, der=1, ext=3)
     
+    #.T inverte ao invés de ter duas linhas e num_points colunas, vira num_points linhas e duas colunas
     path_interp = np.array([x_interp, y_interp]).T
     tangent = np.array([dx_interp, dy_interp]).T
+
+    #normalizando, tamanho 1
     t_norm = np.sqrt(np.sum(tangent**2, axis=1))
     tangent = tangent/t_norm[None].T
     
@@ -52,14 +62,21 @@ def two_stage_interpolate(path, delta_eval=2., smoothing=0.1, k=3):
     
     Parâmetros:
     -----------
-    caminho: ndarray
+    path: ndarray
         Lista de pontos contendo o caminho a ser integrado.
     delta_eval : float
         O intervalo para avaliar a interpolação.
-    suavização: float
+    smoothing: float
         Fator de suavização. 0 significa que o spline passará por todos os pontos interpolados linearmente.
     k : int
-        O grau da segunda interpolação.
+        O grau da segunda interpolação - que no caso é cúbica.
+
+    Retorno:
+    -----------
+    path_interp: ndarray
+        caminho interpolado de forma linear e depois de forma cúbica. 
+    tangent: float
+        lista de tangentes
     '''
     
     path_interp_linear, _ = interpolate(path, delta_eval=delta_eval, smoothing=0, k=1)
@@ -100,11 +117,13 @@ def dist(p1, p2):
     return math.sqrt((p1[0]-p2[0])**2+(p1[1]-p2[1])**2)
 
 def medial_voronoi_ridges(path1, path2):
-    '''Extração dos cumes de Voronoi entre o caminho1 e caminho2. Diagramas de Voronoi podem ser
+    '''Extração das arestas mediais de Voronoi entre o caminho1 e caminho2. Diagramas de Voronoi podem ser
     usados para representar o caminho medial de uma estrutura tubular'''
     
+    # cria novo array concatenado entre os caminho ao longo das linhas
     all_points = np.concatenate((path1, path2), axis=0)
     all_points_ordered = np.concatenate((path1, path2[::-1]), axis=0)
+
     vor = Voronoi(all_points)
     num_points_path1 = len(path1)
     tube_region = geometry.Polygon(all_points_ordered)
@@ -137,7 +156,7 @@ def medial_voronoi_ridges(path1, path2):
     return vor, idx_medial_vertices, point_relation
 
 def order_ridge_vertices(idx_vertices):
-    '''Ordena os vértices dos cumes de Voroni. Uma lista de cumes de Voronoi, que não estão ordenados, são passados
+    '''Ordena os vértices das arestas mediais de Voroni. Uma lista de arestas mediais de Voronoi, que não estão ordenados, são passados
     como parâmetro e na execução da função temos a ordenação destes vértices que definem um caminho por partes.'''
     
     idx_vertices = list(map(tuple, idx_vertices))
@@ -221,7 +240,7 @@ def increase_path_resolution(path, res_factor):
     return path_interp, tangents
 
 def find_point_idx(sh_path, point):
-    '''Encontra pontos nos índices'''
+    '''Encontra índice do point em sh_path'''
 
     #aplicação da distância Euclidiana para encontrar as menores distâncias entre dois pontos
     dists = np.sqrt((sh_path.xy[0]-point[0])**2+(sh_path.xy[1]-point[1])**2)

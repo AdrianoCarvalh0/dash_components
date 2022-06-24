@@ -150,15 +150,13 @@ array_path = retorna_paths(arquivo)
 # pega a metade inteira do vetor
 half_array = len(array_path) // 2
 
+import pdb; pdb.set_trace()
+
 x = 0
 array_pickle = []
 for i in range(half_array):
     img, caminhos_transladados, primeiro_ponto = diminui_imagem(array_path[x:x + 2], path)
 
-    # cam_invertido = invertendo_linhas_colunas(caminhos_transladados)
-
-    # vessel_model = plot_figure(img, cam_invertido[0], cam_invertido[1], setar_alcance(array_path[0], array_path[1]))
-    # vessel_model = plot_figure(img, caminhos_transladados[0], caminhos_transladados[1], setar_alcance(array_path[0], array_path[1]))
     vessel_model, vessel_map, cross_paths = return_vessel(img, caminhos_transladados[0], caminhos_transladados[1],
                                                           setar_alcance(array_path[0], array_path[1]))
     plot_figure(img, vessel_map, vessel_model, cross_paths)  # , vessel_model)

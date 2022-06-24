@@ -124,9 +124,12 @@ def extract_medial_path(path1_interp, path2_interp, delta_eval=2., smoothing=0.0
     medial_path = smutil.invert_if_oposite(path1_interp, medial_path)
 
     # Garante que o caminho medial vai até o final do tubo
+    #tira a média dos caminhos interpolados
     first_point = (path1_interp[0] + path2_interp[0]) / 2
     last_point = (path1_interp[-1] + path2_interp[-1]) / 2
     medial_path = np.array([first_point.tolist()] + medial_path.tolist() + [last_point.tolist()])
+
+    #interpola o caminho medial para fazer uma suavização
     medial_path_info = interpolate_medial_path(medial_path, delta_eval=delta_eval, smoothing=smoothing)
 
     if return_voronoi:
@@ -493,17 +496,31 @@ def create_cross_paths(cross_coord, medial_path, medial_normals, path1, path2, r
 
 def create_cross_versors(medial_path, medial_normals, path1, path2, reach, normal_weight=2,
                          path_res_factor=3, angle_limit=45, angle_res=2):
+    '''função que cria versores transversais'''
+
+    #definição dos ângulos -  
+    # concatenate ==> junta uma sequência de vetores arranjados. 
+    # Os vetores tem um anglo limite de 45 e os outros tem tamanho 2
     angles = np.concatenate((np.arange(-angle_limit, 0 + 0.5 * angle_res, angle_res),
                              np.arange(0, angle_limit + 0.5 * angle_res, angle_res)))
+
+    # chama a função para encontrar os melhores ângulos
     idx_best_angles = find_best_angles(medial_path, medial_normals, path1, path2, angles, reach,
                                        normal_weight, path_res_factor)
 
     cross_versors = []
+
+    # função que pega os índices e pontos do caminho medial para criar versores transversais
     for idxm, pointm in enumerate(medial_path):
+
+         # pega o índice dos melhores ângulos 
         idx_best_angle = idx_best_angles[idxm]
+
+        #verificação se o índice do melhor ângulo é None
         if idx_best_angle is None:
             cross_versors.append(None)
         else:
+            #criação da normal a partir 
             normalm = medial_normals[idxm]
             sh_normalm = geometry.Point(normalm)
             sh_normalm_rotated = affinity.rotate(sh_normalm, angles[idx_best_angle], origin=(0, 0))
