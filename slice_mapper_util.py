@@ -5,16 +5,56 @@ from scipy.spatial import Voronoi
 from shapely import geometry, ops as shops
 
 def arc_length(path):   
-    '''Calcula o comprimento de arco acumulado, entre dois pontos'''
+    '''Calcula o comprimento de arco acumulado, entre dois pontos   
     
+    Parâmetros:
+    -----------
+    path: ndarray
+        Lista de pontos contendo o caminho.    
+
+    Retorno:
+    -----------
+    l: np.array, contendo valores float
+        array contendo as informações acumuladas parciais das somas dos valores verificados. 
+        O último valor da lista representa o somatório total de todas as diferenças somadas anteriormente.   
+    '''
+    
+    # verifica  a diferença entre os segmentos, eleva ao quadrado e tira a raiz. Faz o cálculo 
+    # da hipotenusa quando os pixels estão em diagonal, se estiverem na horizontal este valor dá 1
+    # dl faz a soma das diferenças de um ponto a outro
     dl = np.sqrt(np.sum(np.diff(path, axis=0)**2, axis=1))
+
+    # l é a soma acumulada entre os valores do dl, transformados em lista
     l = np.cumsum(dl).tolist()
+
+    #acréscimo do valor zero para termos o mesmo número de pontos com os comprimentos de arco. O zero seria a diferença do primeiro ponto.
     l = np.array([0] + l)
     
+    #retorno dos valores de todos os comprimentos de arco
     return l
 
 def interpolate(path, delta_eval=2., smoothing=0.1, k=3, return_params=False):    
-    '''Interpola uma lista de pontos'''
+    '''Interpola uma lista de pontos   
+    
+    Parâmetros:
+    -----------
+    path: ndarray
+        Lista de pontos contendo o caminho.    
+    delta_eval: float
+        Variável responsável por criar pontos entre um segmento e outro.   
+    smoothing: float
+        Grau de suavização. 
+    k: int
+        Parâmetro da interpolação cúbica.
+    return_params: boolean
+        Parâmetro setado como false. Se true retorna valores a mais.
+        
+    Retorno:
+    -----------
+    l: np.array, contendo valores float
+        array contendo as informações acumuladas parciais das somas dos valores verificados. 
+        O último valor da lista representa o somatório total de todas as diferenças somadas anteriormente.   
+    '''
 
     #transforma o path em np.array
     path = np.array(path)
