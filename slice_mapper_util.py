@@ -51,15 +51,22 @@ def interpolate(path, delta_eval=2., smoothing=0.1, k=3, return_params=False):
         
     Retorno:
     -----------
-    l: np.array, contendo valores float
+    path_interp:ndarray, contendo valores float
         array contendo as informações acumuladas parciais das somas dos valores verificados. 
         O último valor da lista representa o somatório total de todas as diferenças somadas anteriormente.   
+    tangent: ndarray
+        vetor contendo a listas de tangentes
+    tck: list
+        lista contendo características da curva
+    u: ndarray
+        contém valores entre o intervalo 0-1 e com num_points de índices
+    
     '''
 
     #transforma o path em np.array
     path = np.array(path)
 
-    #absorve o comprimento do arco acumulado
+    #absorve o comprimento do arco acumulado. Todas as posições do comprimento do arco.
     l = arc_length(path)
 
     #numero de pontos absorve o tamanho do path
@@ -70,7 +77,10 @@ def interpolate(path, delta_eval=2., smoothing=0.1, k=3, return_params=False):
     (tck, u), fp, ier, msg = splprep(path.T, s=smoothing*num_points, k=k, full_output=True)
     
     # o l na última posição é o valor acumulado de todas as somas do comprimento do arco
+    # o delta_eval_norm é a divisão entre o delta_eval e o comprimento total do arco
     delta_eval_norm = delta_eval/l[-1]
+
+    #eval_points ==> variação entre 0, intervalo, de delta_eval_norm em delta_eval_norm
     eval_points = np.arange(0, 1+0.75*delta_eval_norm, delta_eval_norm)
     
     # pontos interpolados
@@ -81,9 +91,11 @@ def interpolate(path, delta_eval=2., smoothing=0.1, k=3, return_params=False):
     
     #.T inverte ao invés de ter duas linhas e num_points colunas, vira num_points linhas e duas colunas
     path_interp = np.array([x_interp, y_interp]).T
+
+    # vetor de tangentes transpostas através das derivadas de x e y
     tangent = np.array([dx_interp, dy_interp]).T
 
-    #normalizando, tamanho 1
+    #normalizando as tangentes, para ter no máximo tamanho 1 e não haver preocupação com tamanho
     t_norm = np.sqrt(np.sum(tangent**2, axis=1))
     tangent = tangent/t_norm[None].T
     
