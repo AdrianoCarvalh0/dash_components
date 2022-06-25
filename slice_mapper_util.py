@@ -125,10 +125,10 @@ def two_stage_interpolate(path, delta_eval=2., smoothing=0.1, k=3):
 
     Retorno:
     -----------
-    path_interp: ndarray
+    path_interp: ndarray, float
         caminho interpolado de forma linear e depois de forma cúbica. 
-    tangent: float
-        lista de tangentes
+    tangent: ndarray, float
+        ndarray de tangentes
     '''
     
     path_interp_linear, _ = interpolate(path, delta_eval=delta_eval, smoothing=0, k=1)
@@ -137,11 +137,28 @@ def two_stage_interpolate(path, delta_eval=2., smoothing=0.1, k=3):
     return path_interp, tangent
 
 def get_normals(tangents):    
-    '''Pega vetores normais mediante uma lista de vetores tangentes'''
+    '''Pega vetores normais mediante uma lista de vetores tangentes
     
+    Parâmetros:
+    -----------
+    tangents: ndarray, float
+        ndarray de tangentes   
+
+    Retorno:
+    -----------
+    normals: ndarray, float           
+        ndarray de normais
+    '''
+    #criação de matriz de zeros com duas colunas e do tamanho do vetor de tangents
     normals = np.zeros((len(tangents), 2))
+
+    #laço que pega os índices e os valores das tangentes, idx ==> índice e t ==> valores
     for idx, t in enumerate(tangents):
+
+        #tx e ty absorvem os valores das tangents
         tx, ty = t
+
+        # se o ty tem um valor muito próximo de zero
         if ty<1e-3:
             n2 = 1
             n1 = -ty*n2/tx
@@ -149,9 +166,12 @@ def get_normals(tangents):
             n1 = 1
             n2 = -tx*n1/ty
 
+        # aplicando a normalização
         norm = np.sqrt(n1**2 + n2**2)
         n = np.array([n1/norm, n2/norm])
         
+        #np.cross ==> retorna o produto cruzado de dois vetores
+        #np.sign ==> retorna -1 se x<0, 0 se x==0 e 1 se x>0
         orient = np.sign(np.cross(t, n))
         if idx>0:
             if orient!=prev_orient:               
@@ -163,22 +183,57 @@ def get_normals(tangents):
         
     return normals
 
-def dist(p1, p2):
-    '''Calcula a distância Euclidiana entre dois pontos'''
+def dist(p1, p2):    
+    '''Calcula a distância Euclidiana entre dois pontos
     
+    Parâmetros:
+    -----------
+    p1: array
+        posição 1 de um vetor
+    p2: array
+        posição 2 de um vetor
+
+    Retorno:
+    -----------
+    o cálculo da distância
+    '''    
     return math.sqrt((p1[0]-p2[0])**2+(p1[1]-p2[1])**2)
 
 def medial_voronoi_ridges(path1, path2):
     '''Extração das arestas mediais de Voronoi entre o caminho1 e caminho2. Diagramas de Voronoi podem ser
-    usados para representar o caminho medial de uma estrutura tubular'''
+    usados para representar o caminho medial de uma estrutura tubular   
+
+    Parâmetros:
+    -----------
+    path1: array
+        vetor 1
+    path2: array
+        vetor 2
+    Retorno:
+    -----------
+    vor: objeto Voronoi
+        objeto do tipo Voronoi que contém informações sobre a região
+    idx_medial_vertices: ndarray
+        índices dos vértices mediais
+    point_relation: ndarray
+        pontos de relação entre uma aresta medial e outra
+    '''    
     
-    # cria novo array concatenado entre os caminho ao longo das linhas
+    # cria novo array concatenado entre os caminhos ao longo das linhas
     all_points = np.concatenate((path1, path2), axis=0)
+
+    #ordena todos os pontos
     all_points_ordered = np.concatenate((path1, path2[::-1]), axis=0)
 
+    #criação do objeto vor, passando todos os pontos concatenados ao longo das linhas
     vor = Voronoi(all_points)
+
+    #número de pontos do caminho1
     num_points_path1 = len(path1)
+
+    #cria uma região tubular passando todos os pontos ordenados
     tube_region = geometry.Polygon(all_points_ordered)
+
     idx_internal_vertices = set()    
     # Pega os vértices de Vornoi dentro do tubo
     for idx_vertex, vertex in enumerate(vor.vertices):
@@ -192,10 +247,10 @@ def medial_voronoi_ridges(path1, path2):
         first_is_path1 = True if ridge[0] < num_points_path1 else False
         second_is_path1 = True if ridge[1] < num_points_path1 else False
         if (first_is_path1+second_is_path1)==1:            
-            # Verificação se um cume está entre um ponto no caminho1 e outro no caminho2
+            # Verificação se a aresta medial está entre um ponto no caminho1 e outro no caminho2
             idx_ridge_vertices = vor.ridge_vertices[idx]
             if idx_ridge_vertices[0] in idx_internal_vertices and idx_ridge_vertices[1] in idx_internal_vertices:                
-                # Tenha cuidado com o índice -1 em idx_ridge_vertices para pontos terminais
+                # cuidado para que o índice -1 em idx_ridge_vertices não esteja nos pontos terminais
                 idx_medial_vertices.append(idx_ridge_vertices)
                 if ridge[0] < num_points_path1:
                     point_relation.append((ridge[0], ridge[1]))
@@ -208,8 +263,18 @@ def medial_voronoi_ridges(path1, path2):
     return vor, idx_medial_vertices, point_relation
 
 def order_ridge_vertices(idx_vertices):
-    '''Ordena os vértices das arestas mediais de Voroni. Uma lista de arestas mediais de Voronoi, que não estão ordenados, são passados
-    como parâmetro e na execução da função temos a ordenação destes vértices que definem um caminho por partes.'''
+    '''Ordena os vértices das arestas mediais de Voronoi. Uma lista de arestas mediais de Voronoi, que não estão ordenados, são passados
+    como parâmetro e na execução da função temos a ordenação destes vértices que definem um caminho por partes.
+     
+    Parâmetros:
+    -----------
+    idx_vertices: ndarray, int
+        índices dos vértices   
+    Retorno:
+    -----------    
+    ordered_vertices: ndarray, int
+        vértices ordenados
+    '''    
     
     idx_vertices = list(map(tuple, idx_vertices))
     vertice_ridge_map = {}
