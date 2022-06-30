@@ -327,37 +327,92 @@ def order_ridge_vertices(idx_vertices):
         
 def invert_if_oposite(path1, path2):
     '''Inverte o caminho2, se o caminho1 e o caminho2 forem demarcados em direções opostas. 
-    Isto acontece quando demarcamos os vasos um da direita para a esquerda e outro da esquerda para a direita, ou vice-versa.'''
+    Isto acontece quando demarcamos os vasos um da direita para a esquerda e outro da esquerda para a direita, ou vice-versa.
+     
+    Parâmetros:
+    -----------
+    path1: ndarray, float
+        vetor do caminho 1  
+    path2: ndarray, float
+        vetor do caminho 2
+    Retorno:
+    -----------    
+    path2: ndarray, float
+        vetor do caminho 2 invertido ou não, conforme as verificações
+    '''    
     
+    #verifica qual o menor tamanho entre os dois paths
     min_size = min([len(path1), len(path2)])
+
+    #verificações da distância entre os pontos. Se a distância invertida for maior o path2 será invertido
     avg_dist = np.sum(np.sqrt(np.sum((path1[:min_size]-path2[:min_size])**2, axis=1)))
     avg_dist_inv = np.sum(np.sqrt(np.sum((path1[:min_size]-path2[::-1][:min_size])**2, axis=1)))
     if avg_dist_inv<avg_dist:
         # Inverção do vetor de caminhos2
         path2 = path2[::-1]
     
+    #retorno do path2
     return path2
 
 def increase_path_resolution(path, res_factor):
 
-    '''Incrementa a resolução de um dado caminho, através da aplicação de um fator'''
+    '''Incrementa a resolução de um dado caminho, através da aplicação de um fator.
+     
+    Parâmetros:
+    -----------
+    path: ndarray, float
+        vetor do caminho 
+    res_factor: 
+        vetor do caminho 2
+    Retorno:
+    -----------    
+    path_interp: ndarray, float
+        caminho interpolado
+    tangents: ndarray, float
+        vetor de tangentes criadas a partir do path, absorvendo os valores contidos nas tangentes em x e y
+    '''      
     
+    # x absorve os valores das linhas do caminho
+    # y absorve os valores das colunas do caminho
     x, y = path.T
-    num_points = len(path)
+
+    # número de pontos absorve o tamanho do caminho
+    num_points = len(path)  
+
     indices = list(range(num_points))
     # Define a variável paramétrica certificando-se de que ela passe por todo o ponto original
     tck, _ = splprep(path.T, u=indices, s=0, k=3)
+
+    # eval_points é uma variação do valor de num_points*res_factor - (res_factor-1), sendo de 0 até num_points -1
     eval_points = np.linspace(0, num_points-1, num_points*res_factor - (res_factor-1))
+
+    #interporlação de x e y
     x_interp, y_interp = splev(eval_points, tck, der=0)
+
+    #criação da tangente em x e y
     x_tangents, y_tangents = splev(eval_points, tck, der=1)
     
+    #criação do caminho interpolado
     path_interp = np.array([x_interp, y_interp]).T
+
+    #criação das tangentes
     tangents = np.array([x_tangents, y_tangents]).T
     
     return path_interp, tangents
 
 def find_point_idx(sh_path, point):
-    '''Encontra índice do point em sh_path'''
+    '''Encontra índice do point em sh_path
+    
+     Parâmetros:
+    -----------
+    sh_path: ndarray, float
+        vetor do caminho 
+    point: int
+        índice do ponto
+    Retorno: 
+    -----------    
+        distâncias mínimas entre o caminho e o ponto
+    '''      
 
     #aplicação da distância Euclidiana para encontrar as menores distâncias entre dois pontos
     dists = np.sqrt((sh_path.xy[0]-point[0])**2+(sh_path.xy[1]-point[1])**2)
