@@ -7,10 +7,28 @@ from shapely import geometry, ops as shops, affinity
 from IPython.display import display
 from skimage import draw
 
-#criação de classes para facilitar o encapsulamento das variáveis, atributos e funções.
-class SliceMapper:
 
-    #comentar os atributos
+# criação de classes para facilitar o encapsulamento das variáveis, atributos e funções.
+class SliceMapper:
+    """Classe que dá origem ao modelo e ao mapa do vaso. Chama as funções que criam o VesselModel e VesselMap
+
+        Parâmetros:
+        -----------
+        img: ndarray, float
+            imagem original
+        delta_eval: float
+            parâmetro que aumenta a resolução e cria pontos intermédiários entre uma coordenada e outra (interpola)
+        smoothing: float
+            critério de suavização
+        reach: float
+            variável que delimita o tamanho do mapa do vaso. seta o alcance superior e inferior que o
+            mapa irá abranger
+        add_model:
+        -----------
+            cria o modelo e o mapa do vaso
+        """
+
+    # comentar os atributos
     def __init__(self, img, delta_eval, smoothing, reach):
         self.img = img
         self.delta_eval = delta_eval
@@ -31,6 +49,32 @@ class SliceMapper:
 
 
 class VesselModel:
+    """Classe que armazena informações relacionadas ao modelo do vaso
+
+    Parâmetros:
+    -----------
+    path1: ndarray, float
+        vetor do caminho 1
+    path1_info: tuple
+       informações sobre o caminho 1 são armazenadas em vetores numpy e armazenadas no path1_info
+    path2: ndarray, float
+        vetor do caminho 2
+    path2_info: tuple
+       informações sobre o caminho 2 são armazenadas em vetores numpy e armazenadas no path2_info
+    medial_path: ndarray, float
+        caminho medial
+    medial_info: ndarray, float
+         informações sobre a linha medial são armazenadas em vetores numpy e armazenadas no medial_info
+    delta_eval: float
+        parâmetro que aumenta a resolução e cria pontos intermédiários entre uma coordenada e outra (interpola)
+    vessel_map: object VesselMap
+        instância do objeto VesselMap
+    img_file: ndarray, float
+        arquivo da imagem
+    Retorno:
+    -----------
+        absorve as informações passadas no construtor e armazena no objeto VesselModel
+    """
 
     def __init__(self, path1, path1_info, path2, path2_info, medial_path, medial_info,
                  delta_eval, vessel_map=None, img_file=None):
@@ -63,6 +107,28 @@ class VesselModel:
 
 
 class VesselMap:
+    """Classe que armazena as informações relacionadas ao mapa do vaso
+
+       Parâmetros:
+       -----------
+       mapped_values: ndarray, float
+           valores mapeados
+       medial_coord: ndarray, float
+          coordenadas mediais
+       cross_coord: ndarray, float
+          coordenadas transversais
+       cross_versors: list, float
+          lista contendo os versores transversais
+       mapped_mask_values: ndarray, float
+           valores mapeados em binário
+       path1_mapped: ndarray, float
+           caminho 1 mapeado
+       path2_mapped: ndarray, float
+           caminho 2 mapeado
+       Retorno:
+       -----------
+           absorve as informações passadas no construtor e armazena no objeto VesselMap
+       """
 
     def __init__(self, mapped_values, medial_coord, cross_coord, cross_versors, mapped_mask_values,
                  path1_mapped, path2_mapped):
@@ -75,8 +141,8 @@ class VesselMap:
         self.path2_mapped = path2_mapped
 
 
-def interpolate_envelop(path1, path2, delta_eval=2., smoothing=0.01):    
-    '''Envelopa os itens, caminhos1 e caminho2, suas interpolações suavizadas, suas tangentes e suas normais.
+def interpolate_envelop(path1, path2, delta_eval=2., smoothing=0.01):
+    """Envelopa os itens, caminhos1 e caminho2, suas interpolações suavizadas, suas tangentes e suas normais.
     
     Parâmetros:
     -----------
@@ -106,7 +172,8 @@ def interpolate_envelop(path1, path2, delta_eval=2., smoothing=0.01):
         vetor de tangentes do caminho 2
     normals2: ndarray, float
        vetor de normais do caminho 2
-    '''      
+    """
+
     # os caminhos são interpolados e novas tangentes são criadas a partir da interpolação dos caminhos
     path1_interp, tangents1 = smutil.two_stage_interpolate(path1, delta_eval=delta_eval, smoothing=smoothing)
     path2_interp, tangents2 = smutil.two_stage_interpolate(path2, delta_eval=delta_eval, smoothing=smoothing)
@@ -130,7 +197,6 @@ def interpolate_envelop(path1, path2, delta_eval=2., smoothing=0.01):
         normals2 *= -1
 
     if np.cross(tangents1[1], normals1[1]) < 0:
-     
         # Faz o caminho1 ser executado à esquerda do caminho2
         path1, path2 = path2, path1
         path1_interp, path2_interp = path2_interp, path1_interp
@@ -141,15 +207,14 @@ def interpolate_envelop(path1, path2, delta_eval=2., smoothing=0.01):
 
 
 def extract_medial_path(path1_interp, path2_interp, delta_eval=2., smoothing=0.01, return_voronoi=False):
+    """Extrai o caminho medial a partir de uma estrutura tubular.
 
-    '''Extrai o caminho medial a partir de uma estrutura tubular.
-    
     Parâmetros:
     -----------
     path1_interp: ndarray, float
-        caminho 1 interpolado 
+        caminho 1 interpolado
     path2_interp: ndarray, float
-        caminho 2 interpolado 
+        caminho 2 interpolado
     delta_eval: float
         parâmetro que aumenta a resolução e cria pontos intermédiários entre uma coordenada e outra (interpola)
     smoothing: float
@@ -158,14 +223,14 @@ def extract_medial_path(path1_interp, path2_interp, delta_eval=2., smoothing=0.0
         quando True retona informações do objeto Voronoi criado
 
     Retorno
-    -----------  
+    -----------
     medial_path: ndarray, float
         caminho medial
     medial_path_info: ndarray, float
         contém o caminho medial, suas tangentes e suas normais
     vor: objeto do tipo Voronoi
         retorna informações sobre o objeto Voronoi
-    '''    
+    """
     vor, idx_medial_vertices, point_relation = smutil.medial_voronoi_ridges(path1_interp, path2_interp)
     idx_medial_vertices_ordered = smutil.order_ridge_vertices(idx_medial_vertices)
     medial_path = []
@@ -175,12 +240,12 @@ def extract_medial_path(path1_interp, path2_interp, delta_eval=2., smoothing=0.0
     medial_path = smutil.invert_if_oposite(path1_interp, medial_path)
 
     # Garante que o caminho medial vai até o final do tubo
-    #tira a média dos caminhos interpolados
+    # tira a média dos caminhos interpolados
     first_point = (path1_interp[0] + path2_interp[0]) / 2
     last_point = (path1_interp[-1] + path2_interp[-1]) / 2
     medial_path = np.array([first_point.tolist()] + medial_path.tolist() + [last_point.tolist()])
 
-    #interpola o caminho medial para fazer uma suavização
+    # interpola o caminho medial para fazer uma suavização
     medial_path_info = interpolate_medial_path(medial_path, delta_eval=delta_eval, smoothing=smoothing)
 
     if return_voronoi:
@@ -188,10 +253,11 @@ def extract_medial_path(path1_interp, path2_interp, delta_eval=2., smoothing=0.0
     else:
         return medial_path, medial_path_info
 
-#NÃO ESTÁ SENDO CHAMADA EM LUGAR ALGUM
+
+# NÃO ESTÁ SENDO CHAMADA EM LUGAR ALGUM
 def create_cross_paths_limit(path, normals, cross_coord, remove_endpoints=True):
-    '''Esta função cria os limites das trajetórias transversais.
-    
+    """Esta função cria os limites das trajetórias transversais.
+
     Parâmetros:
     -----------
     path: ndarray, float
@@ -199,15 +265,15 @@ def create_cross_paths_limit(path, normals, cross_coord, remove_endpoints=True):
     normals: ndarray, float
         vetor contendo as normaiscros
     cross_coord: ndarray, float
-        coordenadas transversais criadas a partir de uma altura, de um delta_eval e concatenadas em um arranjo   
+        coordenadas transversais criadas a partir de uma altura, de um delta_eval e concatenadas em um arranjo
     remove_endpoints: boolean
         quando True remove os endpoints
 
     Retorno
-    -----------  
+    -----------
     limits: ndarray, float
         retorna os limites
-    '''    
+    """
 
     if remove_endpoints:
         # É útil remover endpoints se o caminho foi interpolado
@@ -236,9 +302,8 @@ def create_cross_paths_limit(path, normals, cross_coord, remove_endpoints=True):
 
 
 def create_vessel_model(img, path1, path2, delta_eval, smoothing):
+    """Esta função cria o modelo do vaso
 
-    '''Esta função cria o modelo do vaso
-    
     Parâmetros:
     -----------
     img: ndarray, float
@@ -247,24 +312,24 @@ def create_vessel_model(img, path1, path2, delta_eval, smoothing):
         caminho 1
     path2: ndarray, float
         caminho 2
-   delta_eval: float
+    delta_eval: float
         parâmetro que aumenta a resolução e cria pontos intermédiários entre uma coordenada e outra (interpola)
     smoothing: float
         critério de suavização
     Retorno
-    -----------  
+    -----------
     vm: obejct VesselModel
         retorna o modelo do vaso com um objeto instanciado da classe VesselModel
-    '''       
+    """
 
-    #chama a função de inversão. Se o caminho estiver invertido o caminho2 é invertido
+    # chama a função de inversão. Se o caminho estiver invertido o caminho2 é invertido
     path2 = smutil.invert_if_oposite(path1, path2)
 
     # variáveis absorvem o resultado do envelopamento de caminho1, caminho2, passamos um delta_eval 
     # que aumenta a resolução e um grau de suavização é aplicado
     path1, path1_info, path2, path2_info = interpolate_envelop(path1, path2, delta_eval, smoothing)
 
-    # As informação contidas nos caminhos 1 e 2 são inseridas nas variáveis
+    # As informações contidas nos caminhos 1 e 2 são inseridas nas variáveis
     path1_interp, tangents1, normals1 = path1_info
     path2_interp, tangents2, normals2 = path2_info
 
@@ -279,10 +344,10 @@ def create_vessel_model(img, path1, path2, delta_eval, smoothing):
 
     return vm
 
-def create_map(img, vessel_model, reach, delta_eval, smoothing, return_cross_paths=False):
 
-    '''Cria uma imagem contendo intensidades de seção transversal ao longo do caminho medial fornecido
-    
+def create_map(img, vessel_model, reach, delta_eval, smoothing, return_cross_paths=False):
+    """Cria uma imagem contendo intensidades de seção transversal ao longo do caminho medial fornecido
+
     Parâmetros:
     -----------
     img: ndarray, float
@@ -298,13 +363,13 @@ def create_map(img, vessel_model, reach, delta_eval, smoothing, return_cross_pat
     return_cross_paths: boolean
         Por padrão vem False. Se True retorna os caminhos tranversais válidos
     Retorno
-    -----------  
+    -----------
     vesselmap: obejct VesselMap
         retorna o mapa do vaso como um objeto instanciado da classe VesselMap
     cross_paths_valid: ndarray
         retorna os caminhos transversais válidos
-    '''       
-    
+    """
+
     # os caminhos absorvem os valores do modelo do vaso no índice 'interpolated'
     path1_interp = vessel_model.path1['interpolated']
     path2_interp = vessel_model.path2['interpolated']
@@ -314,7 +379,7 @@ def create_map(img, vessel_model, reach, delta_eval, smoothing, return_cross_pat
 
     # as coordenadas tranversais são criadas a partir do reach (altura) e do delta_eval, concatenando os valores em um arranjo 
     cross_coord = np.concatenate((np.arange(-reach, 0 + 0.5 * delta_eval, delta_eval),
-                                  np.arange(delta_eval, reach + 0.5 * delta_eval, delta_eval)))   
+                                  np.arange(delta_eval, reach + 0.5 * delta_eval, delta_eval)))
 
     # os caminhos transversais e os versores tranversais são criados a partir da função de criação de caminhos transversais
     cross_paths, cross_versors = create_cross_paths(cross_coord, medial_path_interp, medial_normals, path1_interp,
@@ -346,7 +411,7 @@ def create_map(img, vessel_model, reach, delta_eval, smoothing, return_cross_pat
     # vai substituir a imagem original por uma imagem binária contendo somente o vaso
     mask_img = generate_mask(path1_interp, path2_interp, img.shape)
 
-    #os valores binários mapeados são criados 
+    # os valores binários mapeados são criados
     mapped_mask_values = map_coordinates(mask_img, cross_paths_flat.T[::-1], output=np.uint8,
                                          order=0, mode='mirror')
     mapped_mask_values = mapped_mask_values.reshape(-1, len(cross_coord)).T
@@ -359,7 +424,6 @@ def create_map(img, vessel_model, reach, delta_eval, smoothing, return_cross_pat
     # os versores transversais, os valores mapeados binários, o caminho 1 e 2 mapeados
     vessel_map = VesselMap(mapped_values, medial_coord, cross_coord, cross_versors, mapped_mask_values, path1_mapped,
                            path2_mapped)
-
     if return_cross_paths:
         return vessel_map, cross_paths_valid
     else:
@@ -367,9 +431,8 @@ def create_map(img, vessel_model, reach, delta_eval, smoothing, return_cross_pat
 
 
 def find_vessel_bounds_in_map(path1_interp, path2_interp, cross_paths, delta_eval, smoothing):
+    """Encontra os limites dos vasos no mapa
 
-    '''Encontra os limites dos vasos no mapa
-    
     Parâmetros:
     -----------
     path1_interp: ndarray, float
@@ -381,14 +444,14 @@ def find_vessel_bounds_in_map(path1_interp, path2_interp, cross_paths, delta_eva
     delta_eval: float
         parâmetro que aumenta a resolução e cria pontos intermédiários entre uma coordenada e outra (interpola)
     smoothing: float
-        critério de suavização    
+        critério de suavização
     Retorno
-    -----------  
+    -----------
     path1_mapped: list, float
         lista que contém o mapeamento do caminho 1
     path2_mapped: list, float
         lista que contém o mapeamento do caminho 2
-    '''       
+    """
 
     # LineString: O objeto LineString construído representa um ou mais splines lineares conectados entre os pontos. 
     # Pontos repetidos na sequência ordenada são permitidos, mas podem incorrer em penalidades de desempenho e 
@@ -425,15 +488,28 @@ def find_vessel_bounds_in_map(path1_interp, path2_interp, cross_paths, delta_eva
     path1_mapped = np.array(path1_mapped) / delta_eval
     path2_mapped = np.array(path2_mapped) / delta_eval
 
-    #retorno das listas contendo os valores do caminho 1 e 2 mapeados
+    # retorno das listas contendo os valores do caminho 1 e 2 mapeados
     return path1_mapped, path2_mapped
 
 
 def find_envelop_cross_path_intersection(sh_cross_path, sh_path_interp, max_dist_factor=2.):
+    """Encontra interseções dos caminhos transversais do envelope
 
-    '''Encontra interseções dos caminhos cruzados do envelope'''
+    Parâmetros:
+    -----------
+    sh_cross_path: object, LineString
+        objeto construído a partir da classe shapely.geometry.linestring.LineString
+    sh_path_interp: object, LineString
+        objeto construído a partir da classe shapely.geometry.linestring.LineString
+    max_dist_factor: float
+        parâmetro que define qual será o fator da maior distância
+    Retorno
+    -----------
+    path_lim: object, Point
+        objeto construído a partir da classe shapely.geometry.point.Point
+    """
 
-    #pega o índice inteiro do meio do tamanho de sh_cross_path.coords
+    # pega o índice inteiro do meio do tamanho de sh_cross_path.coords
     idx_middle_cross_point = len(sh_cross_path.coords) // 2
 
     # o limite do caminho é obtido através das interseções do sh_cross_path
@@ -442,7 +518,6 @@ def find_envelop_cross_path_intersection(sh_cross_path, sh_path_interp, max_dist
         # Nos pontos finais, os caminhos podem não se cruzar
         path_lim = None
     else:
-
         sh_middle_cross_point = geometry.Point(sh_cross_path.coords[idx_middle_cross_point])
         if path_lim.geom_type == 'MultiPoint':
             # Os caminhos se cruzam em mais de um ponto, é necessário encontrar o ponto mais próximo do meio
@@ -461,9 +536,27 @@ def find_envelop_cross_path_intersection(sh_cross_path, sh_path_interp, max_dist
 
 
 def map_slices(img, path1, path2, delta_eval, smoothing, reach):
+    """Criando os modelos e mapas dos vasos
 
-    ''' Criando as fatias do mapa'''
-    
+    path1: ndarray, float
+        vetor do caminho 1
+    path2: ndarray, float
+        vetor do caminho 2
+    delta_eval: float
+        parâmetro que aumenta a resolução e cria pontos intermédiários entre uma coordenada e outra (interpola)
+    smoothing: float
+            critério de suavização
+    reach: float
+        variável que delimita o tamanho do mapa do vaso. seta o alcance superior e inferior que o
+        mapa irá abranger
+    Retorno:
+    -----------
+    vessel_model: obejct VesselModel
+        retorna o modelo do vaso com um objeto instanciado da classe VesselModel
+    cross_paths: ndarray, float
+        caminhos transversais
+    """
+
     # criação do modelo do vaso
     vessel_model = create_vessel_model(img, path1, path2, delta_eval, smoothing)
 
@@ -476,8 +569,23 @@ def map_slices(img, path1, path2, delta_eval, smoothing, reach):
 
 
 def interpolate_medial_path(path, delta_eval=2., smoothing=0.01):
-    
-    '''Interpolando o caminho medial'''
+    """Interpolando o caminho medial
+
+    path: ndarray, float
+        vetor do caminho
+    delta_eval: float
+        parâmetro que aumenta a resolução e cria pontos intermédiários entre uma coordenada e outra (interpola)
+    smoothing: float
+        critério de suavização
+    Retorno:
+    -----------
+    path_interp: ndarray, float
+        caminho interpolado
+    tangents: ndarray, float
+        vetor contendo as tangentes
+    normals: ndarray, float
+        vetor contendo as normais
+    """
 
     # o caminho interpolado e as tangentes são calculadas a partir de dois estágios de interpolação
     # o primeiro estágio é linear e o segundo é cúbico
@@ -488,14 +596,31 @@ def interpolate_medial_path(path, delta_eval=2., smoothing=0.01):
     if np.cross(tangents[0], normals[0]) > 0:
         # Fazendo as normais apontarem para a "esquerda" do medial_path
         normals *= -1
-    
+
     # retornando o caminho interpolado, as tangentes e as normais
     return path_interp, tangents, normals
 
 
 def show_interpolated(path_interp, tangents, normals, ax, scale=2., color='blue'):
-    '''Mostra o caminho interpolado, juntamente com tangentes e normais. A escala passada por parâmetro define o comprimento
-    das setas.'''
+    """Mostra o caminho interpolado, juntamente com tangentes e normais. A escala passada por parâmetro define o comprimento
+    das setas.
+
+    path_interp: ndarray, float
+        caminho interpolado
+    tangents: ndarray, float
+        vetor contendo as tangentes
+    normals: ndarray, float
+        vetor contendo as normais
+    ax: object,, AxesSubplot
+        objeto do tipo AxesSubplot que faz parte da biblioteca matplotlib
+    scale: float
+        parâmetro que dita a escala que será seguida
+    color: str
+        string que armazena a cor da exibição do caminho interpolado.
+    Retorno:
+    -----------
+        os caminhos interpoloados serão plotados e serão adicionadas as colunas tangentes e normais aos eixos.
+    """
 
     # definição do comprimento das cabeças das tangentes e das normais
     tangent_heads = path_interp + scale * tangents
@@ -504,68 +629,80 @@ def show_interpolated(path_interp, tangents, normals, ax, scale=2., color='blue'
     # estilo da seta
     arrow_style = ArrowStyle("->", head_length=10, head_width=3)
 
-    #vetor de setas tangentes
+    # vetor de setas tangentes
     tangent_arrows = []
-    for idx in range(len(path_interp)):     
-
+    for idx in range(len(path_interp)):
         # fa recebe o método FancyArrow, que faz parte da biblioteca do matplot.lib, que ao passar um polígono 
         # como parâmetro cria-se uma flecha (seta)
         fa = FancyArrow(path_interp[idx, 0], path_interp[idx, 1], scale * tangents[idx, 0], scale * tangents[idx, 1],
                         width=0.01, head_width=0.1, head_length=0.2, color='orange')
-        #o vetor de setas tangentes é incrementado 
+        # o vetor de setas tangentes é incrementado
         tangent_arrows.append(fa)
     tangents_col = PatchCollection(tangent_arrows, match_original=True, label='Tangent')
 
-    #vetor de setas normais
+    # vetor de setas normais
     normal_arrows = []
-    for idx in range(len(path_interp)):     
+    for idx in range(len(path_interp)):
         # fa recebe o método FancyArrow, que faz parte da biblioteca do matplot.lib, que ao passar um polígono 
         # como parâmetro cria-se uma flecha (seta)  
         fa = FancyArrow(path_interp[idx, 0], path_interp[idx, 1], scale * normals[idx, 0], scale * normals[idx, 1],
                         width=0.01, head_width=0.1, head_length=0.2, color='orange')
         normal_arrows.append(fa)
-    #o PatchCollection do matplotlib pega as setas normais e adiciona no normals_col. O PatchCollection armazena um conjunto de patches, que no
+    # o PatchCollection do matplotlib pega as setas normais e adiciona no normals_col. O PatchCollection armazena um conjunto de patches, que no
     # caso são o conjunto de setas normais    
     normals_col = PatchCollection(normal_arrows, match_original=True, label='Normal')
 
-    #plot dos caminhos interpolados
-    #path_interp[:, 0] nesta parte roda todas as linhas da coluna 0
-    #path_interp[:, 1] nesta parte roda todas as linhas da coluna 1
+    # plot dos caminhos interpolados
+    # path_interp[:, 0] nesta parte roda todas as linhas da coluna 0
+    # path_interp[:, 1] nesta parte roda todas as linhas da coluna 1
     ax.plot(path_interp[:, 0], path_interp[:, 1], '-', c=color, label='Interpolated')
 
-    #adição das colunas tangentes e normais aos eixos
+    # adição das colunas tangentes e normais aos eixos
     ax.add_collection(tangents_col)
-    ax.add_collection(normals_col)    
+    ax.add_collection(normals_col)
 
 
 def plot_model(img, vessel_model, cross_paths, ax):
-    ''' plotando a imagem, juntamente com o modelo do vaso, com as linhas preenchidas ao longo do vaso, superior
-    e inferior, na cor verde e exibição da linha medial na cor vermelha. Todos estes dados advieram interpolados.'''
+    """ Plotando a imagem, juntamente com o modelo do vaso, com as linhas preenchidas ao longo do vaso, superior
+    e inferior, na cor verde e exibição da linha medial na cor vermelha.
 
-    #variáveis que absorve os caminhos1 e 2 do modelo do vaso
+    img: ndarray, float
+        imagem da área onde contém o vaso
+    vessel_model: obejct VesselModel
+       retorna o modelo do vaso com um objeto instanciado da classe VesselModel
+    cross_paths: ndarray, float
+       caminhos transversais
+    ax: object, AxesSubplot
+       objeto do tipo AxesSubplot que faz parte da biblioteca matplotlib
+    Retorno:
+    -----------
+       são exibidos os caminho 1, 2 (cor verde) e linha medial (cor vermelha) interpolados, as tangentes e as normais de
+       cada um destes itens
+    """
+    # variáveis que absorve os caminhos1 e 2 do modelo do vaso
     p1_data = vessel_model.path1
     p2_data = vessel_model.path2
 
-    #absorvendo o caminho medial do modelo do vaso
+    # absorvendo o caminho medial do modelo do vaso
     medial_data = vessel_model.medial_path
-   
-    #set_aspect com o parâmetro equal faz com que os eixos x e y tenham a mesma escala
+
+    # set_aspect com o parâmetro equal faz com que os eixos x e y tenham a mesma escala
     ax.set_aspect('equal')
     ax.imshow(img, 'gray')
-    
-    #chama a função que mostra os dados interpolados
+
+    # chama a função que mostra os dados interpolados, as tangentes e as normais
     show_interpolated(p1_data['interpolated'], p1_data['tangents'], p1_data['normals'], ax,
                       scale=0.6, color='green')
     show_interpolated(p2_data['interpolated'], p2_data['tangents'], p2_data['normals'], ax,
                       scale=0.6, color='green')
     show_interpolated(medial_data['interpolated'], medial_data['tangents'], medial_data['normals'], ax,
-                      scale=0.6, color='red')    
+                      scale=0.6, color='red')
+
+
 
 
 def generate_mask(path1, path2, img_shape):
-    ''' função que gera máscara para a imagem'''
-
-    #NÃO ENTENDI PARA QUE SERVE
+    """função que gera valores binários para a imagem"""
 
     # concatenate ==> junta uma sequência de vetores ao longo do eixo 0
     envelop = np.concatenate((path1, path2[::-1]), axis=0)
@@ -573,22 +710,22 @@ def generate_mask(path1, path2, img_shape):
     # round ==> arredonda uma matriz, transforma em inteiro
     envelop = np.round(envelop).astype(int)[:, ::-1]
 
-    #cria a máscara da imagem, passando o shape da imagem e o envelop (polígono) criado
+    # tranforma a imagem em binário, passando o shape da imagem e o envelop (polígono) criado
     mask_img = draw.polygon2mask(img_shape, envelop)
 
+    import pdb;  pdb.set_trace()
     return mask_img
 
 
 def create_cross_paths(cross_coord, medial_path, medial_normals, path1, path2, reach, normal_weight=2,
                        path_res_factor=3, angle_limit=45, angle_res=2):
-
-    '''Funções relacionadas com a criação de caminhos transversais'''
+    """Funções relacionadas com a criação de caminhos transversais"""
 
     # criação de versores transversais
     # cria os vetores mais alinhados com as normais das linhas do envelope e da linha medial
     cross_versors = create_cross_versors(medial_path, medial_normals, path1, path2, reach, normal_weight,
                                          path_res_factor, angle_limit, angle_res)
-    
+
     # transposição das coordenadas tranversais
     cross_coord = cross_coord[None].T
 
@@ -606,18 +743,18 @@ def create_cross_paths(cross_coord, medial_path, medial_normals, path1, path2, r
             # o caminho tranversal recebe o ponto + a coordenada tranversal multiplicada pelo versor transversal
             # absorve os valores e insere os pontos em uma linha transversal
             cross_path = pointm + cross_coord * cross_versor
-            #os caminhos tranversais adicionam o caminho transversal em formato de lista
-            cross_paths.append(cross_path.tolist())            
+            # os caminhos tranversais adicionam o caminho transversal em formato de lista
+            cross_paths.append(cross_path.tolist())
 
-    # retorno dos caminhos tranversais e dos versores transversais
+            # retorno dos caminhos tranversais e dos versores transversais
     return cross_paths, cross_versors
 
 
 def create_cross_versors(medial_path, medial_normals, path1, path2, reach, normal_weight=2,
                          path_res_factor=3, angle_limit=45, angle_res=2):
-    '''função que cria versores transversais'''
+    """função que cria versores transversais"""
 
-    #definição dos ângulos -  
+    # definição dos ângulos -
     # concatenate ==> junta uma sequência de vetores arranjados. 
     # Os vetores tem um ângulo limite de 45 e os outros tem tamanho 2
     angles = np.concatenate((np.arange(-angle_limit, 0 + 0.5 * angle_res, angle_res),
@@ -632,14 +769,14 @@ def create_cross_versors(medial_path, medial_normals, path1, path2, reach, norma
     # função que pega os índices e pontos do caminho medial para criar versores transversais
     for idxm, pointm in enumerate(medial_path):
 
-         # pega o índice dos melhores ângulos 
+        # pega o índice dos melhores ângulos
         idx_best_angle = idx_best_angles[idxm]
 
-        #verificação se o índice do melhor ângulo é None
+        # verificação se o índice do melhor ângulo é None
         if idx_best_angle is None:
             cross_versors.append(None)
         else:
-            #criação da normal a partir 
+            # criação da normal a partir
             normalm = medial_normals[idxm]
             sh_normalm = geometry.Point(normalm)
             # faz a rotação encontrando os melhores ângulos
@@ -679,7 +816,7 @@ def find_best_angles(medial_path, medial_normals, path1, path2, angles, reach, n
         else:
             idx_best_angles.append(idx_max)
             sh_candidate_line_rotated = affinity.rotate(sh_candidate_line, angles[idx_max])
-            candidate_line_rotated = np.array(sh_candidate_line_rotated)          
+            candidate_line_rotated = np.array(sh_candidate_line_rotated)
 
     return idx_best_angles
 
@@ -706,5 +843,5 @@ def measure_fitness(sh_candidate_line, normalm, sh_path1, normals1, sh_path2, no
         path1_congruence = abs(np.dot(candidate_normal, normal1))
         path2_congruence = abs(np.dot(candidate_normal, normal2))
         fitness = normal_weight * medial_congruence + path1_congruence + path2_congruence
-        
+
     return fitness
