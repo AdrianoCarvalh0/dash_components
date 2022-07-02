@@ -538,6 +538,8 @@ def find_envelop_cross_path_intersection(sh_cross_path, sh_path_interp, max_dist
 def map_slices(img, path1, path2, delta_eval, smoothing, reach):
     """Criando os modelos e mapas dos vasos
 
+    Parâmetros:
+    -----------
     path1: ndarray, float
         vetor do caminho 1
     path2: ndarray, float
@@ -571,6 +573,8 @@ def map_slices(img, path1, path2, delta_eval, smoothing, reach):
 def interpolate_medial_path(path, delta_eval=2., smoothing=0.01):
     """Interpolando o caminho medial
 
+    Parâmetros:
+    -----------
     path: ndarray, float
         vetor do caminho
     delta_eval: float
@@ -605,6 +609,8 @@ def show_interpolated(path_interp, tangents, normals, ax, scale=2., color='blue'
     """Mostra o caminho interpolado, juntamente com tangentes e normais. A escala passada por parâmetro define o comprimento
     das setas.
 
+    Parâmetros:
+    -----------
     path_interp: ndarray, float
         caminho interpolado
     tangents: ndarray, float
@@ -666,6 +672,8 @@ def plot_model(img, vessel_model, cross_paths, ax):
     """ Plotando a imagem, juntamente com o modelo do vaso, com as linhas preenchidas ao longo do vaso, superior
     e inferior, na cor verde e exibição da linha medial na cor vermelha.
 
+    Parâmetros:
+    -----------
     img: ndarray, float
         imagem da área onde contém o vaso
     vessel_model: obejct VesselModel
@@ -699,12 +707,25 @@ def plot_model(img, vessel_model, cross_paths, ax):
                       scale=0.6, color='red')
 
 
-
-
 def generate_mask(path1, path2, img_shape):
-    """função que gera valores binários para a imagem"""
+    """ Função que transforma os valores em binário
 
-    # concatenate ==> junta uma sequência de vetores ao longo do eixo 0
+    Parâmetros:
+    -----------
+
+    path1: ndarray, float
+        vetor do caminho 1
+    path2: ndarray, float
+        vetor do caminho 2
+    img_shape: tuple, int
+       informa a quantidade de linhas e colunas que a imagem do modelo do vaso conterá
+    Retorno:
+    -----------
+    mask_img: ndarray, contendo valores True e False
+       retorna a máscara para o polígono de entrada, que no caso são o path1, path2 e a img_shape
+    """
+
+    # concatenate ==> junta uma sequência de vetores ao longo das linhas
     envelop = np.concatenate((path1, path2[::-1]), axis=0)
 
     # round ==> arredonda uma matriz, transforma em inteiro
@@ -712,14 +733,41 @@ def generate_mask(path1, path2, img_shape):
 
     # tranforma a imagem em binário, passando o shape da imagem e o envelop (polígono) criado
     mask_img = draw.polygon2mask(img_shape, envelop)
-
-    import pdb;  pdb.set_trace()
     return mask_img
 
 
 def create_cross_paths(cross_coord, medial_path, medial_normals, path1, path2, reach, normal_weight=2,
                        path_res_factor=3, angle_limit=45, angle_res=2):
-    """Funções relacionadas com a criação de caminhos transversais"""
+    """ Funções relacionadas com a criação de caminhos transversais
+
+    Parâmetros:
+    -----------
+    cross_coord: ndarray, float
+        vetor contendo as coordenadas transversais
+    medial_path: ndarray, float
+        caminho medial
+    medial_normals: ndarray, float
+        normais do caminho medial
+    path1: ndarray, float
+       vetor do caminho 1
+    reach: float
+       vetor do caminho 2
+    normal_weight: int
+        altura das normais
+    path_res_factor: int
+       valor que determina o quanto a resolução do caminho será aumentado. Quanto maior este valor, mais pontos serão
+       criados
+    angle_limit: int
+        valor que determina o ângulo limite
+    angle_res: int
+        determina a variação que o ângulo terá
+    Retorno:
+    -----------
+    cross_paths: list, float
+        lista contendo os valores dos caminhos transversais
+    cross_versors: list, float
+        lista contendo os valores dos versores transversais
+    """
 
     # criação de versores transversais
     # cria os vetores mais alinhados com as normais das linhas do envelope e da linha medial
@@ -747,6 +795,7 @@ def create_cross_paths(cross_coord, medial_path, medial_normals, path1, path2, r
             cross_paths.append(cross_path.tolist())
 
             # retorno dos caminhos tranversais e dos versores transversais
+    import pdb; pdb.set_trace()
     return cross_paths, cross_versors
 
 

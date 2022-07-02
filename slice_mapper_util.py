@@ -370,8 +370,9 @@ def increase_path_resolution(path, res_factor):
     -----------
     path: ndarray, float
         vetor do caminho
-    res_factor:
-        vetor do caminho 2
+    res_factor: int
+       valor que determina o quanto a resolução do caminho será aumentada. Quanto maior este valor, mais pontos serão
+       criados
     Retorno:
     -----------
     path_interp: ndarray, float
