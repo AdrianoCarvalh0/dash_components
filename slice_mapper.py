@@ -455,7 +455,7 @@ def find_vessel_bounds_in_map(path1_interp, path2_interp, cross_paths, delta_eva
 
     # LineString: O objeto LineString construído representa um ou mais splines lineares conectados entre os pontos. 
     # Pontos repetidos na sequência ordenada são permitidos, mas podem incorrer em penalidades de desempenho e 
-    # devem ser evitados. Uma LineString pode se cruzar ( ou seja , ser complexa e não simples ).
+    # devem ser evitados. Uma LineString pode se cruzar, ou seja, ser complexa e não simples.
     sh_path1_interp = geometry.LineString(path1_interp)
     sh_path2_interp = geometry.LineString(path2_interp)
     path1_mapped = []
@@ -712,7 +712,6 @@ def generate_mask(path1, path2, img_shape):
 
     Parâmetros:
     -----------
-
     path1: ndarray, float
         vetor do caminho 1
     path2: ndarray, float
@@ -750,8 +749,11 @@ def create_cross_paths(cross_coord, medial_path, medial_normals, path1, path2, r
         normais do caminho medial
     path1: ndarray, float
        vetor do caminho 1
-    reach: float
+    path2: ndarray, float
        vetor do caminho 2
+    reach: float
+       variável que delimita o tamanho do mapa do vaso. seta o alcance superior e inferior que o
+       mapa irá abranger
     normal_weight: int
         altura das normais
     path_res_factor: int
@@ -795,13 +797,40 @@ def create_cross_paths(cross_coord, medial_path, medial_normals, path1, path2, r
             cross_paths.append(cross_path.tolist())
 
             # retorno dos caminhos tranversais e dos versores transversais
-    import pdb; pdb.set_trace()
     return cross_paths, cross_versors
 
 
 def create_cross_versors(medial_path, medial_normals, path1, path2, reach, normal_weight=2,
                          path_res_factor=3, angle_limit=45, angle_res=2):
-    """função que cria versores transversais"""
+    """ Função que cria versores transversais
+
+    Parâmetros:
+    -----------
+    medial_path: ndarray, float
+        caminho medial
+    medial_normals: ndarray, float
+        normais do caminho medial
+    path1: ndarray, float
+       vetor do caminho 1
+    path2: ndarray, float
+       vetor do caminho 2
+    reach: float
+        variável que delimita o tamanho do mapa do vaso. seta o alcance superior e inferior que o
+        mapa irá abranger
+    normal_weight: int
+        altura das normais
+    path_res_factor: int
+       valor que determina o quanto a resolução do caminho será aumentado. Quanto maior este valor, mais pontos serão
+       criados
+    angle_limit: int
+        valor que determina o ângulo limite
+    angle_res: int
+        determina a variação que o ângulo terá
+    Retorno:
+    -----------
+    cross_versors: list, float
+        lista contendo os valores dos versores transversais
+    """
 
     # definição dos ângulos -
     # concatenate ==> junta uma sequência de vetores arranjados. 
@@ -832,17 +861,48 @@ def create_cross_versors(medial_path, medial_normals, path1, path2, reach, norma
             sh_normalm_rotated = affinity.rotate(sh_normalm, angles[idx_best_angle], origin=(0, 0))
             normalm_rotated = np.array(sh_normalm_rotated)
             cross_versors.append(normalm_rotated)
-
     return cross_versors
 
 
 def find_best_angles(medial_path, medial_normals, path1, path2, angles, reach, normal_weight=2,
                      path_res_factor=3):
+    """ Função que encontra os melhores ângulos. Faz a rotação caso seja necessário.
+
+    Parâmetros:
+    -----------
+    medial_path: ndarray, float
+        caminho medial
+    medial_normals: ndarray, float
+        normais do caminho medial
+    path1: ndarray, float
+       vetor do caminho 1
+    path2: ndarray, float
+       vetor do caminho 2
+    angles: ndarray, float
+        vetor que absorve os valores de limite superior e inferior dos ângulos
+    reach: float
+        variável que delimita o tamanho do mapa do vaso. seta o alcance superior e inferior que o
+        mapa irá abranger
+    normal_weight: int
+        altura das normais
+    path_res_factor: int
+       valor que determina o quanto a resolução do caminho será aumentado. Quanto maior este valor, mais pontos serão
+       criados
+    Retorno:
+    -----------
+    idx_best_angles: list, int
+        lista contendo os valores dos melhores ângulos
+    """
+
+    # os caminhos 1 e 2 são interpolados e as suas tangentes são criadas
     path1_interp, tangents1 = smutil.increase_path_resolution(path1, path_res_factor)
     path2_interp, tangents2 = smutil.increase_path_resolution(path2, path_res_factor)
+
+    # o objeto do tipo LineString é criado passando o caminho interpolado
     sh_path1_interp = geometry.LineString(path1_interp)
     sh_path2_interp = geometry.LineString(path2_interp)
-    # Warning, normals do not point to the same direction as in the original paths
+
+    # as normais não apontam para a mesma direção dos caminhos originais
     normals1 = smutil.get_normals(tangents1)
     normals2 = smutil.get_normals(tangents2)
 
@@ -866,15 +926,39 @@ def find_best_angles(medial_path, medial_normals, path1, path2, angles, reach, n
             idx_best_angles.append(idx_max)
             sh_candidate_line_rotated = affinity.rotate(sh_candidate_line, angles[idx_max])
             candidate_line_rotated = np.array(sh_candidate_line_rotated)
-
     return idx_best_angles
 
 
 def measure_fitness(sh_candidate_line, normalm, sh_path1, normals1, sh_path2, normals2, normal_weight):
-    sh_path1_point = find_envelop_cross_path_intersection(sh_candidate_line,
-                                                          sh_path1)
-    sh_path2_point = find_envelop_cross_path_intersection(sh_candidate_line,
-                                                          sh_path2)
+    """ Mede a aptidão da linha candidata.
+
+    Parâmetros:
+    -----------
+    sh_candidate_line: object, LineString
+        objeto do tipo shapely.geometry.linestring.LineString
+    normalm: ndarray, float
+        vetor contendo um par de valores
+    sh_path1: object, LineString
+        objeto do tipo shapely.geometry.linestring.LineString do caminho 1
+    normals1: ndarray, float
+       vetor contendo as normais do caminho 1
+    sh_path2: object, LineString
+        objeto do tipo shapely.geometry.linestring.LineString do caminho 2
+    normals2: ndarray, float
+       vetor contendo as normais do caminho 2
+    normal_weight: int
+        altura das normais
+    Retorno:
+    -----------
+    fitness: int
+        retorna se a linha candidata escolhida é a melhor opção
+    """
+
+    # tenta encontrar o ponto de intersecção dos caminhos transversais
+    sh_path1_point = find_envelop_cross_path_intersection(sh_candidate_line, sh_path1)
+    sh_path2_point = find_envelop_cross_path_intersection(sh_candidate_line, sh_path2)
+
+    # se não houver intersecção a aptidão é -1, ou seja, a linha candidata não tem intersecção
     if sh_path1_point is None or sh_path2_point is None:
         fitness = -1
     else:
