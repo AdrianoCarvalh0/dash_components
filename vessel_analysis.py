@@ -1,17 +1,9 @@
 import numpy as np
-import os
-import pickle
 import matplotlib.pyplot as plt
 import json
-from scipy import ndimage as ndi
-import dash_components.slice_mapper_util as smutil
 import dash_components.slice_mapper as slice_mapper
-from dash_components.slice_mapper import SliceMapper
-from scipy.ndimage import map_coordinates
 from PIL import Image
-from skimage import io
-from numpy import random
-from scipy.interpolate import interp1d
+
 
 # lê um arquivo e retorna um array dos dados do arquivo
 # O array está no formato coluna/linha. O código que faz a extração grava no formato coluna/linha

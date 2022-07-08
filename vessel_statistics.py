@@ -257,7 +257,9 @@ def plot_intensity_cols_with_line_vessel_normal(vessel_map, colunas_demarcadas=N
     -----------
     vessel_map: object VesselMap
         instância do objeto VesselMap
-    colunas_demarcadas
+    colunas_demarcadas: NoneType
+        o campo é None por padrão, sendo setado posteriormente para pegar 5 colunas ao longo do vaso. Se este
+        parâmetro vier preenchido, as colunas serão as que forem passadas por parâmetro
     Retorno:
     -----------
         plota a intensidade das colunas e exibe as delimitações dos vasos à esquerda e à direita
@@ -342,17 +344,30 @@ def plot_intensity_cols_with_line_vessel_normal(vessel_map, colunas_demarcadas=N
     plt.legend(loc='lower right')
     plt.show()
 
-#ERA ASSIM
-#def return_all_instisitys_normal(vessel_map):
-def return_all_instisitys_normal(vessel_model):
-    vessel_map = vessel_model.vessel_map
+def return_all_instisitys_normal(vessel_map):
+
+    """ Função que retorna todas as intensidades normalizadas com a linha central
+
+    Parâmetros:
+    -----------
+    vessel_map: object VesselMap
+        instância do objeto VesselMap
+    Retorno:
+    -----------
+    intensities_common_axis: ndarray, float
+        vetor que contém as intensidades normalizadas
+    l2_chapeu_axis: ndarray, float
+        contém as informações sobre onde o eixo deve começar e terminar. Existe uma modificação na exibição do gráfic,
+        ao invés de começar do ponto de origem [0,0]. Ele (ponto de origem) vai começar dependendo da quantidade de
+        linhas que existirem. O menor valor encontrado
+    """
+
+    #EXPLICAR MELHOR ESTA FUNÇÃO
+
     num_rows, num_cols = vessel_map.mapped_values.shape
 
     # puxa todas as intensidades de todas as colunas
     intensity_cols_values_all = return_intensity_cols(vessel_map)
-
-    # Mostrando a posição 0, 1/4, 1/2, 3/4, e final das colunas
-    colunas_demarcadas = [0, (num_cols // 4), (num_cols // 2), ((num_cols * 3) // 4), (num_cols - 1)]
 
     # Resto inteiro do número de linhas dividido por 2
     linha_centro = num_rows // 2
@@ -407,6 +422,23 @@ def return_all_instisitys_normal(vessel_model):
 
 
 def plot_all_intensities_columns(intensities_common_axis, l2_chapeu_axis):
+
+    """ Função que plota todas as intensidades normalizadas a partir da linha do centro
+
+    Parâmetros:
+    -----------
+    intensities_common_axis: ndarray, float
+        vetor que contém as intensidades normalizadas
+    l2_chapeu_axis: ndarray, float
+        contém as informações sobre onde o eixo deve começar e terminar. Existe uma modificação na exibição do gráfic,
+        ao invés de começar do ponto de origem [0,0]. Ele (ponto de origem) vai começar dependendo da quantidade de
+        linhas que existirem.
+    Retorno:
+    -----------
+        plota todas as intensidades das colunas
+    """
+
+    # EXPLICAR MELHOR
     plt.figure(figsize=[12, 10])
     for intens in intensities_common_axis:
         plt.plot(l2_chapeu_axis, intens)
@@ -415,6 +447,18 @@ def plot_all_intensities_columns(intensities_common_axis, l2_chapeu_axis):
 
 
 def plot_fill_means_std_dev_normal_all(intensities_common_axis):
+    """ Função que plota todas as intensidades normalizadas, exibindo a diferença entre a média e o desvio padrão
+    existente entre as intensidades.
+
+    Parâmetros:
+    -----------
+    intensities_common_axis: ndarray, float
+        vetor que contém as intensidades normalizadas
+    Retorno:
+    -----------
+        plota todas as intensidades normalizadas, exibindo a diferença entre a média e o desvio padrão
+        existente entre as intensidades.
+    """
     # retorna a média de todos os valores mapeados ao longo das linhas
     means = np.mean(intensities_common_axis, axis=0)
 
@@ -434,6 +478,21 @@ def plot_fill_means_std_dev_normal_all(intensities_common_axis):
 
 # função que plota os mínimos e máximos da linha medial de todas as extrações
 def plot_min_max_medial_line(minimum, maximum):
+    """ Função que plota todas os valores mínimos e máximos da linha medial de cada vaso extraído. Cada modelo de vaso
+    possui um valor máximo e um mínimo de intensidade da linha medial. Esta função serve para visualizar
+    estas variações.
+
+    Parâmetros:
+    -----------
+    minimum: list, float
+        lista contendo os valores mínimos de intensidade da linha medial de cada um dos vasos
+    maximum: list, float
+        lista contendo os valores máximos de intensidade da linha medial de cada um dos vasos
+    Retorno:
+    -----------
+       plota todas os valores mínimos e máximos da linha medial de cada vaso extraído
+    """
+
     maximum = np.array(maximum)
     minimum = np.array(minimum)
     plt.figure(figsize=[12, 10])
@@ -446,17 +505,30 @@ def plot_min_max_medial_line(minimum, maximum):
     plt.show()
 
 
-# função que lê todos os arquivos de um diretório, retornando a quantidade existente e os nomes dos arquivos
 def ready_directory(diretorio):
-    qtde = 0
-    nome = []
+    """ Função que lê todos os arquivos de um diretório, retornando a quantidade existente e os nomes dos arquivos
+
+    Parâmetros:
+    -----------
+    diretorio: str
+      nome do local onde se encontra o diretório a ser lido
+    Retorno:
+    -----------
+    nome: list, str
+      lista de nomes dos arquivos que estão sendo lidos no diretório setado
+    qtde: int
+      quantidade de arquivos existentes no diretório
+    """
+
+    qtde_de_arquivos = 0
+    lista_de_nomes = []
     # varredura dos arquivos e adição dos nomes na variável nome e quantidade na variável qtde
     for name in os.listdir(diretorio):
         path = os.path.join(diretorio, name)
         if os.path.isfile(path):
-            nome.append(path)
-            qtde = qtde + 1
-    return nome, qtde
+            lista_de_nomes.append(path)
+            qtde_de_arquivos += 1
+    return lista_de_nomes, qtde_de_arquivos
 
 
 pasta = "C:\\Users\\adria\\PycharmProjects\\pythonProject2\\dash_components\\"
